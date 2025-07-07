@@ -1,5 +1,5 @@
 #include "workspace.hpp"
-#include "glsld/doc.hpp"
+#include "doc.hpp"
 #include <iostream>
 #include <tuple>
 #include <vector>

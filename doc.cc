@@ -1,9 +1,9 @@
 #include "doc.hpp"
-#include "../glslang/MachineIndependent/localintermediate.h"
+#include "glslang/MachineIndependent/localintermediate.h"
 #include "StandAlone/DirStackFileIncluder.h"
 #include "glslang/Include/intermediate.h"
 #include "glslang/MachineIndependent/SymbolTable.h"
-#include "glsld/parser.hpp"
+#include "parser.hpp"
 #include <cstdio>
 #include <iostream>
 #include <map>

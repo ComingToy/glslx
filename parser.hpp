@@ -1,6 +1,6 @@
 #ifndef __GLSLD_PARSER_H__
 #define __GLSLD_PARSER_H__
-#include "StandAlone/DirStackFileIncluder.h"
+#include "glslang/StandAlone/DirStackFileIncluder.h"
 #include "glslang/MachineIndependent/ScanContext.h"
 #include "glslang/MachineIndependent/glslang_tab.cpp.h"
 #include "glslang/MachineIndependent/preprocessor/PpContext.h"

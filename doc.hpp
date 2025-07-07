@@ -1,7 +1,7 @@
 #ifndef __GLSLD_DOC_HPP__
 #define __GLSLD_DOC_HPP__
-#include "../glslang/MachineIndependent/localintermediate.h"
-#include "../glslang/Public/ShaderLang.h"
+#include "glslang/MachineIndependent/localintermediate.h"
+#include "glslang/Public/ShaderLang.h"
 #include "parser.hpp"
 #include <map>
 #include <memory>
