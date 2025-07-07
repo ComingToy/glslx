@@ -1,3 +1,7 @@
 [submodule "json"]
 	path = json
 	url = https://github.com/nlohmann/json.git
+[submodule "glslang"]
+	path = glslang
+	url = git@github.com:ComingToy/glslang.git
+	branch = glsld
