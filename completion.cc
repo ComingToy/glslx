@@ -107,7 +107,7 @@ std::vector<const char*> __keywords = {
 
     "__function", "tensorLayoutNV", "tensorViewNV",
 
-    "coopvecNV", "require", "binding"};
+    "coopvecNV", "require", "binding", "include", "extension"};
 
 extern int yylex(YYSTYPE*, glslang::TParseContext&);
 struct InputStackState {
@@ -237,6 +237,7 @@ private:
                 do_complete_type_prefix_(prefix, results);
                 do_complete_keywords_prefix_(prefix, results);
                 do_complete_builtin_prefix_(prefix, results);
+                do_complete_extention_prefix_(prefix, results);
                 return;
             }
 
@@ -681,6 +682,15 @@ private:
             auto doc = "";
             if (match_prefix(label)) {
                 results.variables.push_back({label, kind, detail.c_str(), doc, label, InsertTextFormat::PlainText});
+            }
+        }
+    }
+
+    void do_complete_extention_prefix_(std::string const& prefix, CompletionResultSet& results)
+    {
+        for (auto e : extentions_) {
+            if (match_prefix(e, prefix)) {
+                results.builtins.push_back({e, CompletionItemKind::Text, "", "", e, InsertTextFormat::PlainText});
             }
         }
     }

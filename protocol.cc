@@ -175,8 +175,8 @@ void Protocol::completion_(nlohmann::json& req)
     }
 
     auto get_words = [this, &uri, line, col](int tok) { return workspace_.get_sentence(uri, line, col, tok); };
-    std::vector<std::string> sentence = {get_words(';'), get_words('\n'), get_words('('),
-                                         get_words('['), get_words('{'),  get_words(' ')};
+    std::vector<std::string> sentence = {get_words(';'), get_words('\n'), get_words('('), get_words('['),
+                                         get_words('{'), get_words(' '),  get_words('#')};
     CompletionResultSet complete_results;
     for (auto& word : sentence) {
         completion(*doc, word, line, col, complete_results);
