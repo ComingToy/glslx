@@ -379,8 +379,6 @@ private:
         int i = 0;
         int kind = 0;
 
-        glslang::TType* fty = nullptr;
-
         if (field.kind != 0 || field.tok != IDENTIFIER) {
             return false;
         }
@@ -393,13 +391,15 @@ private:
             return false;
         }
 
+        glslang::TType* fty = nullptr;
         for (i = 0; i < members.size(); ++i) {
-            fty = members[i].type;
-            if (fty->isReference()) {
-                fty = fty->getReferentType();
+            auto* p = members[i].type;
+            if (p->isReference()) {
+                p = p->getReferentType();
             }
 
-            if (fty->getFieldName() == field.stype->lex.string->c_str()) {
+            if (p->getFieldName() == field.stype->lex.string->c_str()) {
+                fty = p;
                 break;
             }
         }
@@ -517,34 +517,17 @@ private:
         const glslang::TType* type = nullptr;
         auto* func = doc_.lookup_func_by_line(line_);
         auto* sym = doc_.lookup_symbol_by_name(func, top.stype->lex.string->c_str());
+        auto* global = doc_.lookup_symbol_by_name(nullptr, top.stype->lex.string->c_str());
         auto builtin = doc_.lookup_builtin_symbols_by_prefix(top.stype->lex.string->c_str(), true);
 
         if (sym) {
             type = &sym->getType();
+        } else if (global) {
+            type = &global->getType();
         } else if (!builtin.empty()) {
             auto* sym = builtin.front();
             if (auto* var = sym->getAsVariable()) {
                 type = &var->getType();
-            }
-        } else {
-            auto anons = doc_.lookup_symbols_by_prefix(nullptr, "anon@");
-            for (auto anon : anons) {
-                if (type)
-                    break;
-
-                if (!anon->isStruct()) {
-                    continue;
-                }
-
-                auto& members = *anon->getType().getStruct();
-                for (int i = 0; i < members.size(); ++i) {
-                    auto member = members[i].type;
-                    std::string field = member->getFieldName().c_str();
-                    if (field == top.stype->lex.string->c_str()) {
-                        type = member;
-                        break;
-                    }
-                }
             }
         }
 
@@ -736,7 +719,8 @@ void completion(Doc& doc, std::string const& anon_prefix, std::string const& inp
 
     std::vector<std::tuple<YYSTYPE, int>> input_toks;
     if (!anon_prefix.empty()) {
-        YYSTYPE lex = {.lex.string = glslang::NewPoolTString(anon_prefix.c_str())};
+        YYSTYPE lex;
+        lex.lex.string = glslang::NewPoolTString(anon_prefix.c_str());
         input_toks.push_back({lex, IDENTIFIER});
         input_toks.push_back({YYSTYPE{}, DOT});
     }
