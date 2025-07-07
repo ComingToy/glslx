@@ -55,14 +55,16 @@ public:
                                                                   std::string const& prefix);
     std::vector<glslang::TSymbol*> lookup_builtin_symbols_by_prefix(std::string const& prefix, bool fullname = false);
     FunctionDefDesc* lookup_func_by_line(int line);
-    std::vector<FunctionDefDesc>& func_defs() { return resource_->func_defs; }
-    std::vector<glslang::TIntermSymbol*>& userdef_types() { return resource_->userdef_types; }
+    const std::vector<FunctionDefDesc>& func_defs() { return resource_->func_defs; }
+    const std::vector<glslang::TIntermSymbol*>& userdef_types() { return resource_->userdef_types; }
+    const std::vector<glslang::TIntermSymbol*>& globals() { return resource_->globals; }
 
     glslang::TIntermSymbol* lookup_symbol_by_name(Doc::FunctionDefDesc* func, std::string const& name);
     glslang::TIntermediate* intermediate()
     {
         return (resource_ && resource_->shader) ? resource_->shader->getIntermediate() : nullptr;
     }
+
     const char* info_log() { return resource_ ? resource_->info_log.c_str() : ""; }
 
     struct LookupResult {

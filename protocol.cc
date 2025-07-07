@@ -287,6 +287,24 @@ void Protocol::did_change_(nlohmann::json& req)
     workspace_.update_doc(uri, version, source);
 }
 
+void Protocol::document_symbol_(nlohmann::json& req)
+{
+    std::string uri = req["textDocument"]["uri"];
+    auto* doc = workspace_.get_doc(uri);
+    if (!doc)
+        make_response_(req, nullptr);
+
+	const auto& globals = doc->globals();
+	const auto& funcs = doc->func_defs();
+	const auto& userdef = doc->userdef_types();
+
+	nlohmann::json symbols;
+	for (auto global: globals)
+	{
+		
+	}
+}
+
 void Protocol::publish_(std::string const& method, nlohmann::json* params)
 {
     nlohmann::json body;
