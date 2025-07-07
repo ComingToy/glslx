@@ -65,5 +65,6 @@ struct CompletionResultSet {
     std::vector<CompletionResult> builtins;
 };
 
-extern void completion(Doc& doc, std::string const& input, const int line, const int col, CompletionResultSet& results);
+extern void completion(Doc& doc, std::string const& anon_prefix, std::string const& input, const int line,
+                       const int col, CompletionResultSet& results);
 #endif

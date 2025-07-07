@@ -1,4 +1,5 @@
 #include "completion.hpp"
+#include "glslang/Include/Common.h"
 #include "parser.hpp"
 #include <cstdio>
 #include <cstring>
@@ -107,7 +108,8 @@ std::vector<const char*> __keywords = {
 
     "__function", "tensorLayoutNV", "tensorViewNV",
 
-    "coopvecNV", "require", "binding", "include", "extension", "local_size_x_id", "local_size_y_id", "local_size_z_id"};
+    "coopvecNV", "require", "binding", "include", "extension", "local_size_x_id", "local_size_y_id", "local_size_z_id",
+    "constant_id", "push_constant"};
 
 extern int yylex(YYSTYPE*, glslang::TParseContext&);
 struct InputStackState {
@@ -228,12 +230,6 @@ private:
             std::string prefix = input.stype->lex.string->c_str();
             if (input_stack.empty()) {
                 do_complete_var_prefix_(prefix, results);
-                auto anons = doc_.lookup_symbols_by_prefix(nullptr, "anon@");
-                for (auto* anon : anons) {
-                    if (anon->isStruct()) {
-                        do_complete_struct_field_(&anon->getType(), prefix, results);
-                    }
-                }
                 do_complete_type_prefix_(prefix, results);
                 do_complete_keywords_prefix_(prefix, results);
                 do_complete_builtin_prefix_(prefix, results);
@@ -696,7 +692,8 @@ private:
     }
 };
 
-void completion(Doc& doc, std::string const& input, const int line, const int col, CompletionResultSet& results)
+void completion(Doc& doc, std::string const& anon_prefix, std::string const& input, const int line, const int col,
+                CompletionResultSet& results)
 {
     const char* source = input.data();
     size_t len = input.size();
@@ -738,6 +735,12 @@ void completion(Doc& doc, std::string const& input, const int line, const int co
     std::vector<const char*> extentions(textensions.cbegin(), textensions.cend());
 
     std::vector<std::tuple<YYSTYPE, int>> input_toks;
+    if (!anon_prefix.empty()) {
+        YYSTYPE lex = {.lex.string = glslang::NewPoolTString(anon_prefix.c_str())};
+        input_toks.push_back({lex, IDENTIFIER});
+        input_toks.push_back({YYSTYPE{}, DOT});
+    }
+
     while (true) {
         YYSTYPE stype;
         int tok = yylex(&stype, *parser_resource->parse_context);

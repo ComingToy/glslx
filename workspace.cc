@@ -69,8 +69,6 @@ std::string Workspace::get_sentence(std::string const& uri, const int line, cons
 
     const auto& lines = docs_[uri].lines();
     std::string const& text = lines[line];
-    std::cerr << "completion at line " << line << ": " << text << std::endl
-              << "text size: " << text.size() << ", col: " << col;
     if (text.size() < col) {
         return {};
     }

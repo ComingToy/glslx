@@ -1,10 +1,12 @@
 #include "protocol.hpp"
 #include "completion.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <iostream>
 #include <iterator>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -177,10 +179,26 @@ void Protocol::completion_(nlohmann::json& req)
     auto get_words = [this, &uri, line, col](int tok) { return workspace_.get_sentence(uri, line, col, tok); };
     std::vector<std::string> sentence = {get_words(';'), get_words('\n'), get_words('('), get_words('['),
                                          get_words('{'), get_words(' '),  get_words('#')};
+
+    std::set<std::string> uniq_sentence(sentence.cbegin(), sentence.cend());
+
+    std::vector<std::string> anon_prefix;
+    for (auto sym : doc->lookup_symbols_by_prefix(nullptr, "anon@")) {
+        if (!sym->isStruct())
+            continue;
+        anon_prefix.push_back(sym->getName().c_str());
+    }
+
     CompletionResultSet complete_results;
-    for (auto& word : sentence) {
-        completion(*doc, word, line, col, complete_results);
-        completion(*doc, "anon@0." + word, line, col, complete_results);
+    for (auto& word : uniq_sentence) {
+        completion(*doc, {}, word, line, col, complete_results);
+        if (!isalpha(word.front()) && word.front() != '_') {
+            continue;
+        }
+
+        for (auto const& prefix : anon_prefix) {
+            completion(*doc, prefix, word, line, col, complete_results);
+        }
     }
 
     auto unique_candidates = [](auto& results) {
