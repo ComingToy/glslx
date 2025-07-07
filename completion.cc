@@ -107,7 +107,7 @@ std::vector<const char*> __keywords = {
 
     "__function", "tensorLayoutNV", "tensorViewNV",
 
-    "coopvecNV", "require", "binding", "include", "extension"};
+    "coopvecNV", "require", "binding", "include", "extension", "local_size_x_id", "local_size_y_id", "local_size_z_id"};
 
 extern int yylex(YYSTYPE*, glslang::TParseContext&);
 struct InputStackState {
