@@ -248,14 +248,7 @@ void Protocol::completion_(nlohmann::json& req)
     }
 
     for (auto const& result : results) {
-        nlohmann::json item;
-        item["label"] = result.label;
-        item["kind"] = int(result.kind);
-        item["detail"] = result.detail;
-        item["documentation"] = result.documentation;
-        item["insertText"] = result.insert_text;
-        item["insertTextFormat"] = int(result.insert_text_format);
-        completion_items.push_back(item);
+        completion_items.push_back(result.json());
     }
 
     make_response_(req, &completion_items);
