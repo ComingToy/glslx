@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "completion.hpp"
+#include "document_symbol.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -37,6 +38,8 @@ int Protocol::handle(nlohmann::json& req)
         completion_(req);
     } else if (method == "textDocument/didSave") {
         did_save_(req);
+    } else if (method == "textDocument/documentSymbol") {
+        document_symbol_(req);
     }
 
     return 0;
@@ -92,7 +95,7 @@ void Protocol::initialize_(nlohmann::json& req)
 			"implementationProvider": false,
 			"referencesProvider": true,
 			"documentHighlightProvider": false,
-			"documentSymbolProvider": false,
+			"documentSymbolProvider": true,
 			"codeActionProvider": false,
 			"codeLensProvider": false,
 			"documentLinkProvider": false,
@@ -294,15 +297,14 @@ void Protocol::document_symbol_(nlohmann::json& req)
     if (!doc)
         make_response_(req, nullptr);
 
-	const auto& globals = doc->globals();
-	const auto& funcs = doc->func_defs();
-	const auto& userdef = doc->userdef_types();
+    auto symbols = document_symbol(doc);
+    nlohmann::json resp;
 
-	nlohmann::json symbols;
-	for (auto global: globals)
-	{
-		
-	}
+    for (auto const& s : symbols) {
+        resp.push_back(s.json());
+    }
+
+    make_response_(req, &resp);
 }
 
 void Protocol::publish_(std::string const& method, nlohmann::json* params)

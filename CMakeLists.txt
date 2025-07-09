@@ -12,7 +12,7 @@ add_executable(compile_compute_shader compile_compute_shader.cc)
 target_link_libraries(compile_compute_shader PUBLIC MachineIndependent)
 target_include_directories(compile_compute_shader PUBLIC glslang)
 
-add_library(lsp STATIC protocol.cc completion.cc doc.cc workspace.cc parser.cc)
+add_library(lsp STATIC protocol.cc completion.cc doc.cc workspace.cc parser.cc document_symbol.cc)
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)
 target_include_directories(lsp PUBLIC json/include/)
 target_include_directories(lsp PUBLIC glslang)

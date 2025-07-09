@@ -1,6 +1,8 @@
 #ifndef __GLSLD_DOCUMENT_SYMBOL_HPP__
 #define __GLSLD_DOCUMENT_SYMBOL_HPP__
 
+#include "doc.hpp"
+#include "nlohmann/json.hpp"
 #include <string>
 #include <vector>
 
@@ -38,9 +40,10 @@ struct DocumentSymbol {
     std::string detail;
     SymbolKind kind;
     std::vector<DocumentSymbol> children;
+
+    nlohmann::json json() const;
 };
 
-std::vector<DocumentSymbol> document_symbol(std::string const& uri);
+extern std::vector<DocumentSymbol> document_symbol(Doc* doc);
 #endif
-
 
