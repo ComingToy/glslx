@@ -2,17 +2,9 @@
 #include "doc.hpp"
 #include <vector>
 
-std::vector<DocumentSymbol> document_symbol(Doc* doc)
+static void document_userdef_types(Doc* doc, std::vector<DocumentSymbol>& symbols)
 {
-    if (!doc)
-        return {};
-
     const auto& userdef_types = doc->userdef_types();
-    const auto& globals = doc->globals();
-    const auto& funcs = doc->func_defs();
-
-    std::vector<DocumentSymbol> symbols;
-
     DocumentSymbol symbol;
     for (const auto& s : userdef_types) {
         const auto& loc = s->getLoc();
@@ -50,6 +42,34 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
 
         symbols.emplace_back(std::move(symbol));
     }
+}
+
+static void document_globals(Doc* doc, std::vector<DocumentSymbol>& symbols)
+{
+    const auto& globals = doc->globals();
+    for (const auto& g : globals) {
+        const auto* name = g->getName().c_str();
+        std::string detail = g->getType().getCompleteString(true, false, false).c_str();
+        auto loc = g->getLoc();
+        Range range;
+        range.start.line = loc.line - 1;
+        range.start.character = loc.column - 1;
+        range.end = range.start;
+
+        symbols.push_back({name, detail.c_str(), SymbolKind::Variable, range, range});
+    }
+}
+
+std::vector<DocumentSymbol> document_symbol(Doc* doc)
+{
+    if (!doc)
+        return {};
+
+    const auto& funcs = doc->func_defs();
+
+    std::vector<DocumentSymbol> symbols;
+    document_userdef_types(doc, symbols);
+    document_globals(doc, symbols);
 
     return symbols;
 }
