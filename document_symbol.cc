@@ -28,8 +28,8 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
         }
 
         Range range;
-        range.start.line = loc.line;
-        range.start.character = loc.column;
+        range.start.line = loc.line - 1;
+        range.start.character = loc.column - 1;
         range.end = range.start;
 
         DocumentSymbol symbol = {tyname, "struct", SymbolKind::Struct, range, range};
@@ -37,9 +37,15 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
         auto const& members = *ty.getStruct();
         for (int i = 0; i < members.size(); ++i) {
             const glslang::TType* field = members[i].type;
+            const auto loc = members[i].loc;
             const auto* fieldname = field->getFieldName().c_str();
+
+            Range range;
+            range.start.line = loc.line - 1;
+            range.start.character = loc.column - 1;
+            range.end = range.start;
             auto detail = field->getCompleteString(true, false, false);
-            symbol.children.push_back({fieldname, detail.c_str(), SymbolKind::Field});
+            symbol.children.push_back({fieldname, detail.c_str(), SymbolKind::Field, range, range});
         }
 
         symbols.emplace_back(std::move(symbol));
