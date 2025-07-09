@@ -54,6 +54,14 @@ void Protocol::make_response_(nlohmann::json& req, nlohmann::json* result)
             {"id", req["id"]},
             {"result", *result},
         };
+    } else if (result->is_array()) {
+        body = nlohmann::json::parse(R"(
+			{
+				"jsonrpc": "2.0",
+				"result": [] 
+			}
+		)");
+        body["id"] = req["id"];
     } else {
         body = nlohmann::json::parse(R"(
 			{
@@ -292,19 +300,21 @@ void Protocol::did_change_(nlohmann::json& req)
 
 void Protocol::document_symbol_(nlohmann::json& req)
 {
-    std::string uri = req["textDocument"]["uri"];
+    auto& params = req["params"];
+    std::string uri = params["textDocument"]["uri"];
     auto* doc = workspace_.get_doc(uri);
-    if (!doc)
-        make_response_(req, nullptr);
-
-    auto symbols = document_symbol(doc);
-    nlohmann::json resp;
-
-    for (auto const& s : symbols) {
-        resp.push_back(s.json());
+    auto arr = nlohmann::json::array({});
+    if (!doc) {
+        make_response_(req, &arr);
     }
 
-    make_response_(req, &resp);
+    auto symbols = document_symbol(doc);
+
+    for (auto const& s : symbols) {
+        arr.push_back(s.json());
+    }
+
+    make_response_(req, &arr);
 }
 
 void Protocol::publish_(std::string const& method, nlohmann::json* params)

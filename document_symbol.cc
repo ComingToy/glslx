@@ -15,6 +15,11 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
 
     DocumentSymbol symbol;
     for (const auto& s : userdef_types) {
+        const auto& loc = s->getLoc();
+        if (doc->uri() != loc.getFilename()) {
+            continue;
+        }
+
         const auto& ty = s->getType();
         const auto* tyname = ty.getTypeName().c_str();
         const auto& detail = ty.getCompleteString(true, false, false);
@@ -22,7 +27,12 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
             continue;
         }
 
-        DocumentSymbol symbol = {tyname, detail.c_str(), SymbolKind::Struct};
+        Range range;
+        range.start.line = loc.line;
+        range.start.character = loc.column;
+        range.end = range.start;
+
+        DocumentSymbol symbol = {tyname, "struct", SymbolKind::Struct, range, range};
 
         auto const& members = *ty.getStruct();
         for (int i = 0; i < members.size(); ++i) {
@@ -36,18 +46,4 @@ std::vector<DocumentSymbol> document_symbol(Doc* doc)
     }
 
     return symbols;
-}
-
-nlohmann::json DocumentSymbol::json() const
-{
-    nlohmann::json symbol;
-    symbol["name"] = name;
-    symbol["detail"] = detail;
-    symbol["kind"] = int(kind);
-
-    for (auto const& child : children) {
-        symbol["children"].push_back(child.json());
-    }
-
-    return symbol;
 }
