@@ -1,8 +1,8 @@
 #include "doc.hpp"
-#include "glslang/MachineIndependent/localintermediate.h"
 #include "StandAlone/DirStackFileIncluder.h"
 #include "glslang/Include/intermediate.h"
 #include "glslang/MachineIndependent/SymbolTable.h"
+#include "glslang/MachineIndependent/localintermediate.h"
 #include "parser.hpp"
 #include <cstdio>
 #include <iostream>
@@ -512,7 +512,8 @@ bool Doc::parse(std::vector<std::string> const& include_dirs)
         includer.pushExternalLocalDirectory(d);
     }
 
-    const EShMessages rules = static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules | EShMsgBuiltinSymbolTable);
+    const EShMessages rules =
+        static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules | EShMsgBuiltinSymbolTable);
 
     auto default_version_ = 110;
     auto default_profile_ = ENoProfile;
@@ -523,12 +524,12 @@ bool Doc::parse(std::vector<std::string> const& include_dirs)
     success = shader.parse(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_, false,
                            rules, includer);
     if (!success) {
-		resource_->info_log = shader.getInfoLog();
+        resource_->info_log = shader.getInfoLog();
         delete resource;
         return false;
     }
 
-	std::cerr << shader.getInfoDebugLog() << std::endl;
+    std::cerr << shader.getInfoDebugLog() << std::endl;
 
     auto* interm = shader.getIntermediate();
 
