@@ -129,7 +129,7 @@ void Protocol::initialize_(nlohmann::json& req)
 
     // std::cerr << "build reqsp capabilities: " << std::endl << result.dump() << std::endl;
     nlohmann::json params = req["params"];
-    workspace_.set_root(params["rootPath"]);
+    workspace_.init(params["rootPath"]);
 
     init_ = true;
     // std::cerr << "init workspace at root: " << workspace_.get_root() << std::endl;
@@ -149,7 +149,8 @@ void Protocol::did_open_(nlohmann::json& req)
     int version = textDoc["version"];
     std::string source = textDoc["text"];
     Doc doc(uri, version, source);
-    if (!doc.parse({workspace_.get_root()})) {
+    const auto& compile_option = workspace_.get_compile_option(uri);
+    if (!doc.parse(compile_option)) {
         publish_diagnostics(doc.info_log());
     } else {
         publish_clear_diagnostics(uri);

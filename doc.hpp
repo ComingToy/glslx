@@ -1,5 +1,6 @@
 #ifndef __GLSLD_DOC_HPP__
 #define __GLSLD_DOC_HPP__
+#include "args.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
 #include "parser.hpp"
@@ -27,7 +28,7 @@ public:
     Doc& operator=(Doc&& doc);
     virtual ~Doc();
 
-    bool parse(std::vector<std::string> const& include_dirs);
+    bool parse(CompileOption const& compile_option);
     void update(const int version, std::string const& text)
     {
         if (resource_->version >= version)
@@ -79,7 +80,6 @@ public:
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
     glslang::TSourceLoc locate_userdef_type(const glslang::TType* use);
-    static const TBuiltInResource kDefaultTBuiltInResource;
 
 private:
     typedef decltype(YYSTYPE::lex) lex_info_type;

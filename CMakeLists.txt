@@ -26,6 +26,8 @@ add_library(
 	parser.hpp
 	document_symbol.cc
 	lsp_defs.hpp
+    args.cc
+    args.hpp
 )
 
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)
@@ -35,3 +37,6 @@ add_executable(glsld glsld.cc)
 add_executable(test_protocol test_protocol.cc)
 target_link_libraries(glsld PUBLIC lsp)
 target_link_libraries(test_protocol PUBLIC lsp)
+
+add_executable(test_options test_options.cc)
+target_link_libraries(test_options lsp)

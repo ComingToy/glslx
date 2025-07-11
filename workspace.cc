@@ -1,10 +1,76 @@
 #include "workspace.hpp"
+#include "args.hpp"
 #include "doc.hpp"
+#include "nlohmann/json.hpp"
+#include <filesystem>
 #include <iostream>
 #include <tuple>
 #include <vector>
 
 Workspace::Workspace() : root_("/") {}
+
+bool Workspace::init(std::string const& root)
+{
+    namespace fs = std::filesystem;
+    set_root(root);
+
+    std::vector<CompileCommand> compile_commands;
+
+    fs::path compile_commands_db_path = fs::path(root_) / fs::path("compile_commands_glslx.json");
+    std::ifstream ifs(compile_commands_db_path.string());
+
+    nlohmann::json compile_commands_db = nlohmann::json::parse(ifs);
+
+    for (auto pos = compile_commands_db.begin(); pos != compile_commands_db.end(); ++pos) {
+        auto& item = *pos;
+        struct CompileCommand command = {item["directory"], item["command"], item["file"], item["output"]};
+
+        fs::path file(command.file);
+        std::string extension = file.extension();
+
+        /*
+		 * .vert for a vertex shader
+		 * .tesc for a tessellation control shader
+		 * .tese for a tessellation evaluation shader
+		 * .geom for a geometry shader
+		 * .frag for a fragment shader
+		 * .comp for a compute shader
+		 * */
+        if (extension != ".vert" && extension != ".tesc" && extension != ".tese" && extension != ".geom" &&
+            extension != ".frag" && extension != ".comp") {
+            continue;
+        }
+
+        compile_commands.push_back(command);
+    }
+
+    // parse compile parameters
+    parse_compile_options(compile_commands);
+    return true;
+}
+
+void Workspace::parse_compile_options(std::vector<CompileCommand> const& compile_commands)
+{
+    for (auto& item : compile_commands) {
+        std::istringstream iss(item.command);
+        std::vector<std::string> args;
+        std::string arg;
+        while (iss >> arg) {
+            args.push_back(arg);
+        }
+
+        CompileOption compile_option;
+        if (!::parse_compile_options(args, compile_option)) {
+            std::cerr << "parse compile options failed for " << item.file << std::endl;
+            continue;
+        }
+
+        compile_option.include_dirs.push_back(root_);
+        compile_options_["file://" + item.file] = compile_option;
+    }
+}
+
+const CompileOption& Workspace::get_compile_option(std::string const& uri) { return compile_options_[uri]; }
 
 void Workspace::set_root(std::string const& root) { root_ = root; }
 std::string const& Workspace::get_root() const { return root_; }
@@ -22,7 +88,7 @@ std::tuple<bool, Doc*> Workspace::save_doc(std::string const& uri, const int ver
     if (docs_.count(uri) > 0) {
         auto& doc = docs_[uri];
         if (doc.version() == version) {
-            bool ret = doc.parse({get_root()});
+            bool ret = doc.parse(get_compile_option(uri));
             return std::make_tuple(ret, &doc);
         }
         return std::make_tuple(true, &doc);
