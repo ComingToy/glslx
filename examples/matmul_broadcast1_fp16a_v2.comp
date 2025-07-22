@@ -14,6 +14,7 @@ layout (constant_id = 0) const int act = 0;
 layout (constant_id = 1) const int transpose_b = 0;
 layout (constant_id = 2) const float scale = 1.0;
 layout (constant_id = 3) const float offset = 0;
+layout (constant_id = 4) const float test_const = 123.0;
 
 layout (binding = 0) readonly buffer InputTensor0
 {
@@ -41,7 +42,6 @@ main ()
   uint gid_x = gl_WorkGroupID.x * FP16_TILE_X_SIZE;
   uint gid_y = gl_GlobalInvocationID.y;
   uint gid_z = gl_GlobalInvocationID.z;
-
   uint C = shape2.c;
   uint M = shape0.h;
   uint K = shape0.w;
