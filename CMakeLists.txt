@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26.0)
-project(glsld)
+project(glslx)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,9 +33,9 @@ add_library(
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)
 target_include_directories(lsp PUBLIC json/include/ glslang ${CMAKE_SOURCE_DIR})
 
-add_executable(glsld glsld.cc)
+add_executable(glslx glslx.cc)
 add_executable(test_protocol test_protocol.cc)
-target_link_libraries(glsld PUBLIC lsp)
+target_link_libraries(glslx PUBLIC lsp)
 target_link_libraries(test_protocol PUBLIC lsp)
 
 add_executable(test_options test_options.cc)
