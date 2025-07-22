@@ -399,7 +399,7 @@ bool Doc::parse(CompileOption const& option)
     }
 
     const EShMessages rules =
-        static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules | EShMsgBuiltinSymbolTable);
+        static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules);
 
     auto default_version_ = compile_option.version;
     auto default_profile_ = compile_option.profile;
@@ -424,16 +424,16 @@ bool Doc::parse(CompileOption const& option)
 
     for (auto& s : visitor.globals) {
         auto loc = s->getLoc();
-        fprintf(stderr, "global symbol %s define at %s:%d:%d\n", s->getName().c_str(), loc.getFilename(), loc.line,
-                loc.column);
+        // fprintf(stderr, "global symbol %s define at %s:%d:%d\n", s->getName().c_str(), loc.getFilename(), loc.line,
+        //         loc.column);
         resource->globals.push_back(s);
     }
 
     for (auto& t : visitor.userdef_types) {
         auto loc = t->getLoc();
         auto const& type = t->getType();
-        fprintf(stderr, "user def type %s: %s define at %s:%d:%d\n", type.getTypeName().c_str(),
-                type.getCompleteString(true, false, false).c_str(), loc.getFilename(), loc.line, loc.column);
+        // fprintf(stderr, "user def type %s: %s define at %s:%d:%d\n", type.getTypeName().c_str(),
+        //         type.getCompleteString(true, false, false).c_str(), loc.getFilename(), loc.line, loc.column);
     }
 
     std::cerr << "DocInfoExtractor found " << visitor.funcs.size() << " function def" << std::endl;
