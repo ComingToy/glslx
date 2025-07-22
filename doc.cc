@@ -432,8 +432,8 @@ bool Doc::parse(CompileOption const& option)
     for (auto& t : visitor.userdef_types) {
         auto loc = t->getLoc();
         auto const& type = t->getType();
-        // fprintf(stderr, "user def type %s: %s define at %s:%d:%d\n", type.getTypeName().c_str(),
-        //         type.getCompleteString(true, false, false).c_str(), loc.getFilename(), loc.line, loc.column);
+        fprintf(stderr, "user def type %s: %s define at %s:%d:%d\n", type.getTypeName().c_str(),
+                type.getCompleteString(true, false, false).c_str(), loc.getFilename(), loc.line, loc.column);
     }
 
     std::cerr << "DocInfoExtractor found " << visitor.funcs.size() << " function def" << std::endl;
