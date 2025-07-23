@@ -80,7 +80,7 @@ public:
 
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
-    glslang::TSourceLoc locate_userdef_type(const glslang::TType* use);
+    glslang::TSourceLoc locate_userdef_type(int line, const glslang::TType* use);
 
 private:
     typedef decltype(YYSTYPE::lex) lex_info_type;

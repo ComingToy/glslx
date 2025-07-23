@@ -596,10 +596,19 @@ glslang::TSourceLoc Doc::locate_symbol_def(Doc::FunctionDefDesc* func, glslang::
     return {.name = nullptr, .line = 0, .column = 0};
 }
 
-glslang::TSourceLoc Doc::locate_userdef_type(const glslang::TType* ty)
+glslang::TSourceLoc Doc::locate_userdef_type(int line, const glslang::TType* ty)
 {
     if (!resource_)
         return {};
+
+    auto* func = lookup_func_by_line(line);
+    if (func) {
+        for (auto* def : func->userdef_types) {
+            if (def->getType().getTypeName() == ty->getTypeName()) {
+                return def->getLoc();
+            }
+        }
+    }
 
     for (auto* def : resource_->userdef_types) {
         if (def->getType().getTypeName() == ty->getTypeName()) {
