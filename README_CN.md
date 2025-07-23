@@ -88,6 +88,7 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
 | 扩展补全 | ![拓展补全](doc/completion_extension.gif) |
 | 函数补全 | ![补全函数](doc/completion_func.gif) |
 | 结构体成员补全 | ![补全结构体成员](doc/completion_field.gif) |
+| 跳转到定义 | ![Goto Definition](doc/definition.gif) |  
 
 ## 📜 许可证
 

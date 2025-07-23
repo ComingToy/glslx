@@ -88,6 +88,7 @@ glslx is a GLSL language server based on the official [Khronos Group glslang](ht
 | Extension Completion | ![Extension Completion](doc/completion_extension.gif) |  
 | Function Completion | ![Function Completion](doc/completion_func.gif) |  
 | Struct Member Completion | ![Struct Member Completion](doc/completion_field.gif) |  
+| Goto Definition | ![Goto Definition](doc/definition.gif) |  
 
 ## 📜 License  
 
