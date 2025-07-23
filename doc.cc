@@ -108,6 +108,7 @@ public:
     glslang::TSourceLoc end_loc;
     std::vector<glslang::TIntermSymbol*> defs, uses;
     std::map<int, std::vector<TIntermNode*>> nodes_by_line;
+    std::vector<glslang::TIntermSymbol*> userdef_types;
 
     void visitConstantUnion(glslang::TIntermConstantUnion* node) override
     {
@@ -215,7 +216,12 @@ public:
             end_loc = loc;
         }
 
-        if (unary->getOp() == glslang::EOpDeclare) {
+        if (unary->getOp() == glslang::EOpDeclareType) {
+            auto* sym = unary->getOperand()->getAsSymbolNode();
+            if (sym)
+                userdef_types.push_back(sym);
+            return false;
+        } else if (unary->getOp() == glslang::EOpDeclare) {
             defs.push_back(unary->getOperand()->getAsSymbolNode());
             return false;
         } else {
@@ -282,6 +288,8 @@ public:
             body->traverse(&extractor);
             function_def.local_defs.swap(extractor.defs);
             function_def.local_uses.swap(extractor.uses);
+            function_def.userdef_types.swap(extractor.userdef_types);
+
             std::cerr << "found function def " << agg->getName() << " at " << agg->getLoc().getFilename() << ":"
                       << agg->getLoc().line << ":" << agg->getLoc().column << " to "
                       << body->getAsAggregate()->getEndLoc().line
@@ -398,8 +406,7 @@ bool Doc::parse(CompileOption const& option)
         includer.pushExternalLocalDirectory(d);
     }
 
-    const EShMessages rules =
-        static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules);
+    const EShMessages rules = static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules);
 
     auto default_version_ = compile_option.version;
     auto default_profile_ = compile_option.profile;
@@ -418,6 +425,15 @@ bool Doc::parse(CompileOption const& option)
     std::cerr << shader.getInfoDebugLog() << std::endl;
 
     auto* interm = shader.getIntermediate();
+
+#if 0
+    {
+        TInfoSink sink;
+        interm->output(sink, true);
+        std::cerr << sink.info.c_str() << std::endl;
+        std::cerr << sink.debug.c_str() << std::endl;
+    }
+#endif
 
     DocInfoExtractor visitor;
     interm->getTreeRoot()->traverse(&visitor);

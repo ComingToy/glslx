@@ -17,6 +17,7 @@ public:
         std::vector<glslang::TIntermSymbol*> args;
         std::vector<glslang::TIntermSymbol*> local_defs;
         std::vector<glslang::TIntermSymbol*> local_uses;
+        std::vector<glslang::TIntermSymbol*> userdef_types;
         glslang::TSourceLoc start, end;
     };
 
