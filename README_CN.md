@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
-[![CMake](https://img.shields.io/badge/CMake-3.10+-green.svg)](https://cmake.org/)
+[![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)](https://cmake.org/)
 
 glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/glslang) 官方编译库实现的高性能GLSL语言服务器，为GLSL着色器开发提供全面且准确的语言支持。🚀
 
@@ -30,7 +30,7 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
 ## 🔧 构建指南
 
 ### 系统要求
-- CMake 3.10+
+- CMake 3.26+
 - C++17兼容编译器
 
 ### 构建步骤
@@ -88,6 +88,7 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
 | 扩展补全 | ![拓展补全](doc/completion_extension.gif) |
 | 函数补全 | ![补全函数](doc/completion_func.gif) |
 | 结构体成员补全 | ![补全结构体成员](doc/completion_field.gif) |
+| 跳转到定义 | ![Goto Definition](doc/definition.gif) |  
 
 ## 📜 许可证
 
