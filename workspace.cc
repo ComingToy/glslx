@@ -121,7 +121,7 @@ glslang::TSourceLoc Workspace::locate_symbol_def(std::string const& uri, const i
         } else if (node.kind == Doc::LookupResult::Kind::FIELD) {
             return node.field.loc;
         } else if (node.kind == Doc::LookupResult::Kind::TYPE) {
-            return docs_[uri].locate_userdef_type(node.ty);
+            return docs_[uri].locate_userdef_type(line, node.ty);
         }
     }
 

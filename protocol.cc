@@ -49,19 +49,21 @@ void Protocol::make_response_(nlohmann::json& req, nlohmann::json* result)
 {
     nlohmann::json body;
     if (result) {
-        body = {
-            {"jsonrpc", "2.0"},
-            {"id", req["id"]},
-            {"result", *result},
-        };
-    } else if (result->is_array()) {
-        body = nlohmann::json::parse(R"(
+        if (result->is_array() && result->empty()) {
+            body = nlohmann::json::parse(R"(
 			{
 				"jsonrpc": "2.0",
 				"result": [] 
 			}
 		)");
-        body["id"] = req["id"];
+            body["id"] = req["id"];
+        } else {
+            body = {
+                {"jsonrpc", "2.0"},
+                {"id", req["id"]},
+                {"result", *result},
+            };
+        }
     } else {
         body = nlohmann::json::parse(R"(
 			{
