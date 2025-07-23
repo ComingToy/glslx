@@ -1,70 +1,94 @@
-# glslx: Language Server For Glslang
-> Powered by ❤️ Keep patching
+# glslx: GLSL Language Server ✨
 
-glslx 是一个基于KhronosGroup官方[glslang](https://github.com/KhronosGroup/glslang)库开发的glslang语言服务器。
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
+[![CMake](https://img.shields.io/badge/CMake-3.10+-green.svg)](https://cmake.org/)
 
-- [主要特性](#主要特性)
-- [从源码编译](#从源码编译)
-- [快速上手](#快速上手)
+glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/glslang) 官方编译库实现的高性能GLSL语言服务器，为GLSL着色器开发提供全面且准确的语言支持。🚀
 
-#### 主要特性：
+## ✨ 功能特性
 
-- 跳转到定义
-- 代码补全
-    - 用户定义变量、结构体、函数
-    - 内置变量、函数、类型 
-    - 关键字
-    - 拓展名
-    - 结构体成员补全
-- 基于glslang的代码诊断
-- outline
-- 支持`#include`包含头文件
+### ✅ 已实现功能
+- **智能代码补全**
+  - 用户定义变量、结构体和函数
+  - 内置变量、函数和数据类型
+  - 语言关键字和扩展指令
+  - 结构体成员自动补全
+- **精确的代码导航**
+  - 跳转到定义 (Go to Definition)
+  - 文档大纲视图 (Outline)
+- **实时错误诊断**
+  - 基于glslang的语法和语义检查
+- **头文件支持**
+  - 完整处理`#include`指令
 
-规划中特性:
-- semantic token
-- hover
-- reference
+### 🚧 规划中的特性
+- 语义标记 (Semantic Tokens)
+- 悬停文档 (Hover Documentation)
+- 引用查找 (Find References)
 
-### 从源码编译
+## 🔧 构建指南
 
-#### 步骤
-先克隆仓库
-```bash
-git clone --recursive https://github.com/ComingToy/glslx.git
-```
-编译代码
-```bash
-cmake -DENABLE_OPT=OFF -B build -S .
-cmake --build build --parallel
-cp build/glslx /usr/local/bin/glslx # 可能需要root或者sudo权限
-```
+### 系统要求
+- CMake 3.10+
+- C++17兼容编译器
 
-### 快速上手
-这里以在neovim中使用coc.nvim配置为例。
-先打开coc.nvim配置文件`~/.config/nvim/coc-settings.json`. 在`languageserver`中配置如下
-```json
-{
-  ... // other config
-  "languageserver": {
-    "glslang":
-    {
-        "command": "/usr/local/bin/glslx",
-        "filetypes": ["glslx"],
-    },
-  },
- ... // other config 
-}
-```
-glslx从workspace根目录下读取`compile_commands_glslx.json`文件加载对应源码文件的编译指令，格式与[compile_commands.json](https://clang.llvm.org/docs/JSONCompilationDatabase.html)相同. 目前缺少针对glslc导出`compile_commands_glslx.json`的工具，只能依靠手动编写。一个例子如下:
-```json
-[
-{
-  "directory": "/home/ComingToy/github/glslx",
-  "command": "glslc --target-env=vulkan1.3 -DInputType=float16_t -DOutputType=float16_t -o matmul_b0_tb_fp16a_v2.spv -I /home/ComingToy/github/glslx/examples/ /home/ComingToy/github/glslx/examples/matmul_broadcast1_fp16a_v2.comp",
-  "file": "/home/ComingToy/github/glslx/examples/matmul_broadcast1_fp16a_v2.comp",
-  "output": "matmul_b0_tb_fp16a_v2.spv"
-}
-]
-```
+### 构建步骤
+1. 克隆仓库（包含子模块）：
+   ```bash
+   git clone --recursive https://github.com/ComingToy/glslx.git
+   cd glslx
+   ```
 
-### 演示
+2. 配置并构建项目：
+   ```bash
+   cmake -DENABLE_OPT=OFF -B build -S .
+   cmake --build build --parallel
+   ```
+
+3. 安装（可选）：
+   ```bash
+   sudo cp build/glslx /usr/local/bin/
+   ```
+
+## 📖 使用说明
+
+### Neovim (coc.nvim) 配置示例
+
+1. 编辑coc.nvim配置文件 `~/.config/nvim/coc-settings.json`：
+   ```json
+   {
+     "languageserver": {
+       "glslang": {
+         "command": "/usr/local/bin/glslx",
+         "filetypes": ["glslx"],
+       }
+     }
+   }
+   ```
+
+2. 编译指令配置：
+   在项目根目录创建 `compile_commands_glslx.json` 文件，格式遵循[编译数据库规范](https://clang.llvm.org/docs/JSONCompilationDatabase.html)。示例：
+   ```json
+   [
+     {
+       "directory": "/path/to/project",
+       "command": "glslc --target-env=vulkan1.3 -DInputType=float16_t -o output.spv -I /path/to/includes source.comp",
+       "file": "/path/to/project/source.comp",
+       "output": "output.spv"
+     }
+   ]
+   ```
+
+## 🎥 功能演示
+
+| 功能 | 演示 |
+|------|------|
+| 代码诊断 | ![代码诊断](doc/diagnostic.gif) |
+| 扩展补全 | ![拓展补全](doc/completion_extension.gif) |
+| 函数补全 | ![补全函数](doc/completion_func.gif) |
+| 结构体成员补全 | ![补全结构体成员](doc/completion_field.gif) |
+
+## 📜 许可证
+
+本项目采用MIT许可证。详情见[LICENSE](./LICENSE)文件。
