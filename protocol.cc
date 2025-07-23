@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "completion.hpp"
+#include "document_symbol.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -13,7 +14,7 @@
 int Protocol::handle(nlohmann::json& req)
 {
     nlohmann::json resp;
-    std::cerr << "start handle protocol req: \n" << req.dump(4) << std::endl;
+    // std::cerr << "start handle protocol req: \n" << req.dump(4) << std::endl;
 
     std::string method = req["method"];
     if (method != "initialize" && !init_) {
@@ -37,6 +38,8 @@ int Protocol::handle(nlohmann::json& req)
         completion_(req);
     } else if (method == "textDocument/didSave") {
         did_save_(req);
+    } else if (method == "textDocument/documentSymbol") {
+        document_symbol_(req);
     }
 
     return 0;
@@ -51,6 +54,14 @@ void Protocol::make_response_(nlohmann::json& req, nlohmann::json* result)
             {"id", req["id"]},
             {"result", *result},
         };
+    } else if (result->is_array()) {
+        body = nlohmann::json::parse(R"(
+			{
+				"jsonrpc": "2.0",
+				"result": [] 
+			}
+		)");
+        body["id"] = req["id"];
     } else {
         body = nlohmann::json::parse(R"(
 			{
@@ -92,7 +103,7 @@ void Protocol::initialize_(nlohmann::json& req)
 			"implementationProvider": false,
 			"referencesProvider": true,
 			"documentHighlightProvider": false,
-			"documentSymbolProvider": false,
+			"documentSymbolProvider": true,
 			"codeActionProvider": false,
 			"codeLensProvider": false,
 			"documentLinkProvider": false,
@@ -118,7 +129,7 @@ void Protocol::initialize_(nlohmann::json& req)
 
     // std::cerr << "build reqsp capabilities: " << std::endl << result.dump() << std::endl;
     nlohmann::json params = req["params"];
-    workspace_.set_root(params["rootPath"]);
+    workspace_.init(params["rootPath"]);
 
     init_ = true;
     // std::cerr << "init workspace at root: " << workspace_.get_root() << std::endl;
@@ -138,7 +149,8 @@ void Protocol::did_open_(nlohmann::json& req)
     int version = textDoc["version"];
     std::string source = textDoc["text"];
     Doc doc(uri, version, source);
-    if (!doc.parse({workspace_.get_root()})) {
+    const auto& compile_option = workspace_.get_compile_option(uri);
+    if (!doc.parse(compile_option)) {
         publish_diagnostics(doc.info_log());
     } else {
         publish_clear_diagnostics(uri);
@@ -237,14 +249,7 @@ void Protocol::completion_(nlohmann::json& req)
     }
 
     for (auto const& result : results) {
-        nlohmann::json item;
-        item["label"] = result.label;
-        item["kind"] = int(result.kind);
-        item["detail"] = result.detail;
-        item["documentation"] = result.documentation;
-        item["insertText"] = result.insert_text;
-        item["insertTextFormat"] = int(result.insert_text_format);
-        completion_items.push_back(item);
+        completion_items.push_back(result.json());
     }
 
     make_response_(req, &completion_items);
@@ -285,6 +290,25 @@ void Protocol::did_change_(nlohmann::json& req)
     int version = textDoc["version"];
     std::string source = params["contentChanges"][0]["text"];
     workspace_.update_doc(uri, version, source);
+}
+
+void Protocol::document_symbol_(nlohmann::json& req)
+{
+    auto& params = req["params"];
+    std::string uri = params["textDocument"]["uri"];
+    auto* doc = workspace_.get_doc(uri);
+    auto arr = nlohmann::json::array({});
+    if (!doc) {
+        make_response_(req, &arr);
+    }
+
+    auto symbols = document_symbol(doc);
+
+    for (auto const& s : symbols) {
+        arr.push_back(s.json());
+    }
+
+    make_response_(req, &arr);
 }
 
 void Protocol::publish_(std::string const& method, nlohmann::json* params)

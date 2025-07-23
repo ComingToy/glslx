@@ -1,5 +1,6 @@
 #include "completion.hpp"
 #include "glslang/Include/Common.h"
+#include "glslang/Include/PoolAlloc.h"
 #include "parser.hpp"
 #include <cstdio>
 #include <cstring>
@@ -678,6 +679,8 @@ private:
 void completion(Doc& doc, std::string const& anon_prefix, std::string const& input, const int line, const int col,
                 CompletionResultSet& results)
 {
+    auto pool = std::make_unique<glslang::TPoolAllocator>();
+    glslang::SetThreadPoolAllocator(pool.get());
     const char* source = input.data();
     size_t len = input.size();
     glslang::TInputScanner userInput(1, &source, &len);
