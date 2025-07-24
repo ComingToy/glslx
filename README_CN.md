@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
 [![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)](https://cmake.org/)
-[![build](https://github.com/ComingToy/glslx/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/ComingToy/glslx/actions)
+[![build](https://github.com/ComingToy/glslx/actions/workflows/build.yml/badge.svg)](https://github.com/ComingToy/glslx/actions)
 
 glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/glslang) 官方编译库实现的高性能GLSL语言服务器，为GLSL着色器开发提供全面且准确的语言支持。🚀
 
