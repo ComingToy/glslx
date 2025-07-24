@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
 [![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)](https://cmake.org/)
+[![build](https://github.com/ComingToy/glslx/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/ComingToy/glslx/actions)
 
 glslx is a GLSL language server based on the official [Khronos Group glslang](https://github.com/KhronosGroup/glslang) compiler library, providing comprehensive and accurate language support for GLSL shader development. 🚀  
 

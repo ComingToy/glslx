@@ -319,7 +319,7 @@ public:
         return true;
     }
 
-    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override {}
+    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override { return true; }
 };
 
 bool visitAllTypesAndSymbols(glslang::TIntermediate* intermediate)
