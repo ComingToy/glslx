@@ -26,7 +26,7 @@ bool Workspace::init(std::string const& root)
         struct CompileCommand command = {item["directory"], item["command"], item["file"], item["output"]};
 
         fs::path file(command.file);
-        std::string extension = file.extension();
+        std::string extension = file.extension().string();
 
         /*
 		 * .vert for a vertex shader
@@ -110,7 +110,7 @@ std::vector<Doc::LookupResult> Workspace::lookup_nodes_at(std::string const& uri
 glslang::TSourceLoc Workspace::locate_symbol_def(std::string const& uri, const int line, const int col)
 {
     if (docs_.count(uri) <= 0)
-        return {.name = nullptr, .line = 0, .column = 0};
+        return {nullptr, 0, 0};
 
     auto nodes = lookup_nodes_at(uri, line, col);
     auto* func = docs_[uri].lookup_func_by_line(line);
@@ -125,7 +125,7 @@ glslang::TSourceLoc Workspace::locate_symbol_def(std::string const& uri, const i
         }
     }
 
-    return {.name = nullptr, .line = 0, .column = 0};
+    return {nullptr, 0, 0};
 }
 
 std::string Workspace::get_sentence(std::string const& uri, const int line, const int col, int breakc)

@@ -1,21 +1,31 @@
 #include "protocol.hpp"
 #include <cstdio>
 #include <fstream>
-#include <iostream>
-#include <unistd.h>
 #include <vector>
 
 int main(int argc, char* argv[])
 {
     int ch = -1;
     std::vector<std::string> files;
-    while ((ch = ::getopt(argc, argv, "f:")) != -1) {
-        switch (ch) {
-        case 'f':
-            files.push_back(optarg);
-            continue;
-        default:
-            break;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-f") {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "usage: %s -f <json file0> -f <json file1> ...\n", argv[0]);
+                return -1;
+            }
+
+            std::string file = argv[i + 1];
+            if (file.front() == '-') {
+                fprintf(stderr, "usage: %s -f <json file0> -f <json file1> ...\n", argv[0]);
+                return -1;
+            }
+
+            files.push_back(file);
+            i += 1;
+        } else {
+            fprintf(stderr, "usage: %s -f <json file0> -f <json file1> ...\n", argv[0]);
         }
     }
 

@@ -263,7 +263,7 @@ public:
 
         if (agg->getOp() == glslang::EOpFunction) {
 
-            struct Doc::FunctionDefDesc function_def = {.def = agg, .start = agg->getLoc(), .end = agg->getEndLoc()};
+            struct Doc::FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
 
             auto& children = agg->getSequence();
             if (children.size() != 2) {
@@ -520,12 +520,12 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
     const auto field = (*members)[index];
 
     if (rloc.column <= col && col <= rloc.column + field.type->getFieldName().size()) {
-        return {Doc::LookupResult::Kind::FIELD, .field = field};
+        return {Doc::LookupResult::Kind::FIELD, nullptr, field, nullptr};
     }
 
     if (auto* left_sym = left->getAsSymbolNode()) {
         if (lloc.line == line && lloc.column <= col && col <= lloc.column + left_sym->getName().size()) {
-            return {.kind = Doc::LookupResult::Kind::SYMBOL, .sym = left_sym};
+            return {Doc::LookupResult::Kind::SYMBOL, left_sym, {}, nullptr};
         }
     }
 
@@ -547,7 +547,7 @@ std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int co
             auto loc = sym->getLoc();
             auto endcol = loc.column + sym->getName().length();
             if (line == loc.line && loc.column <= col && col <= endcol) {
-                result.push_back({.kind = LookupResult::Kind::SYMBOL, .sym = sym});
+                result.push_back({LookupResult::Kind::SYMBOL, sym, {}, nullptr});
             }
         } else if (auto binop = node->getAsBinaryNode()) {
             auto bin_result = lookup_binop(binop, line, col);
@@ -569,7 +569,7 @@ std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int co
             auto endcol = startcol + ty.getTypeName().size();
 
             if (line == loc.line && startcol <= col && col <= endcol) {
-                result.push_back({.kind = LookupResult::Kind::TYPE, .ty = &ty});
+                result.push_back({LookupResult::Kind::TYPE, nullptr, {}, &ty});
             }
         }
     }
@@ -593,7 +593,7 @@ glslang::TSourceLoc Doc::locate_symbol_def(Doc::FunctionDefDesc* func, glslang::
         }
     }
 
-    return {.name = nullptr, .line = 0, .column = 0};
+    return {nullptr, 0, 0};
 }
 
 glslang::TSourceLoc Doc::locate_userdef_type(int line, const glslang::TType* ty)
@@ -616,7 +616,7 @@ glslang::TSourceLoc Doc::locate_userdef_type(int line, const glslang::TType* ty)
         }
     }
 
-    return {.name = nullptr, .line = 0, .column = 0};
+    return {nullptr, 0, 0};
 }
 
 std::vector<glslang::TIntermSymbol*> Doc::lookup_symbols_by_prefix(Doc::FunctionDefDesc* func,

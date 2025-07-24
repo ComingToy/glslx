@@ -33,7 +33,6 @@
 #include <string>
 
 #include "StandAlone/DirStackFileIncluder.h"
-#include "glslang/Include/BaseTypes.h"
 #include "glslang/Include/InfoSink.h"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"

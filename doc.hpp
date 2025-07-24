@@ -71,11 +71,9 @@ public:
 
     struct LookupResult {
         enum class Kind { SYMBOL, FIELD, TYPE, ERROR } kind;
-        union {
-            glslang::TIntermSymbol* sym;
-            glslang::TTypeLoc field;
-            const glslang::TType* ty;
-        };
+        glslang::TIntermSymbol* sym;
+        glslang::TTypeLoc field;
+        const glslang::TType* ty;
     };
 
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
