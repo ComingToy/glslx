@@ -18,6 +18,8 @@ add_library(
 	lsp_defs.hpp
     args.cc
     args.hpp
+    cache.cc
+    cache.hpp
 )
 
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)
