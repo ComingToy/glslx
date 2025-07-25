@@ -49,7 +49,7 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
 
 3. 安装（可选）：
    ```bash
-   sudo cp build/glslx /usr/local/bin/
+   sudo cp build/src/glslx /usr/local/bin/
    ```
 
 ## 📖 使用说明

@@ -49,7 +49,7 @@ glslx is a GLSL language server based on the official [Khronos Group glslang](ht
 
 3. Install (optional):  
    ```bash  
-   sudo cp build/glslx /usr/local/bin/  
+   sudo cp build/src/glslx /usr/local/bin/  
    ```  
 
 ## 📖 Usage  
