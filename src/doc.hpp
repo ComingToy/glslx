@@ -1,6 +1,7 @@
 #ifndef __GLSLX_DOC_HPP__
 #define __GLSLX_DOC_HPP__
 #include "args.hpp"
+#include "extractors.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
 #include "parser.hpp"
@@ -12,15 +13,7 @@
 
 class Doc {
 public:
-    struct FunctionDefDesc {
-        glslang::TIntermAggregate* def;
-        std::vector<glslang::TIntermSymbol*> args;
-        std::vector<glslang::TIntermSymbol*> local_defs;
-        std::vector<glslang::TIntermSymbol*> local_uses;
-        std::vector<glslang::TIntermSymbol*> userdef_types;
-        glslang::TSourceLoc start, end;
-    };
-
+    using FunctionDefDesc = DocInfoExtractor::FunctionDefDesc;
     Doc();
     Doc(std::string const& uri, const int version, std::string const& text);
     Doc(const Doc& rhs);

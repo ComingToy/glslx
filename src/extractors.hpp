@@ -132,10 +132,19 @@ public:
 
 class DocInfoExtractor : public glslang::TIntermTraverser {
 public:
+    struct FunctionDefDesc {
+        glslang::TIntermAggregate* def;
+        std::vector<glslang::TIntermSymbol*> args;
+        std::vector<glslang::TIntermSymbol*> local_defs;
+        std::vector<glslang::TIntermSymbol*> local_uses;
+        std::vector<glslang::TIntermSymbol*> userdef_types;
+        glslang::TSourceLoc start, end;
+    };
+
     std::map<int, std::vector<TIntermNode*>> nodes_by_line;
     std::vector<glslang::TIntermSymbol*> uses;
     std::vector<glslang::TIntermSymbol*> globals;
-    std::vector<Doc::FunctionDefDesc> funcs;
+    std::vector<FunctionDefDesc> funcs;
     std::vector<glslang::TIntermSymbol*> userdef_types;
     bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override
     {
@@ -163,7 +172,7 @@ public:
 
         if (agg->getOp() == glslang::EOpFunction) {
 
-            struct Doc::FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
+            struct FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
 
             auto& children = agg->getSequence();
             if (children.size() != 2) {
