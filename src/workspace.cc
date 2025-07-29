@@ -17,6 +17,11 @@ bool Workspace::init(std::string const& root)
     std::vector<CompileCommand> compile_commands;
 
     fs::path compile_commands_db_path = fs::path(root_) / fs::path("compile_commands_glslx.json");
+
+    if (!fs::exists(compile_commands_db_path)) {
+        return true;
+    }
+
     std::ifstream ifs(compile_commands_db_path.string());
 
     nlohmann::json compile_commands_db = nlohmann::json::parse(ifs);
