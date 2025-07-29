@@ -1,5 +1,5 @@
-#ifndef __GLSLD_ARGS_HPP__
-#define __GLSLD_ARGS_HPP__
+#ifndef __GLSLX_ARGS_HPP__
+#define __GLSLX_ARGS_HPP__
 #include "glslang/Public/ShaderLang.h"
 #include <map>
 #include <string>

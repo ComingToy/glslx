@@ -1,5 +1,5 @@
-#ifndef __GLSLD_PROTOCOL_HPP__
-#define __GLSLD_PROTOCOL_HPP__
+#ifndef __GLSLX_PROTOCOL_HPP__
+#define __GLSLX_PROTOCOL_HPP__
 #include "nlohmann/json.hpp"
 #include "workspace.hpp"
 #include <vector>

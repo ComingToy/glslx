@@ -1,5 +1,5 @@
-#ifndef __GLSLD_DOC_HPP__
-#define __GLSLD_DOC_HPP__
+#ifndef __GLSLX_DOC_HPP__
+#define __GLSLX_DOC_HPP__
 #include "args.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
