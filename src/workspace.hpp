@@ -1,5 +1,5 @@
-#ifndef __GLSLD_WORKSPACE_HPP__
-#define __GLSLD_WORKSPACE_HPP__
+#ifndef __GLSLX_WORKSPACE_HPP__
+#define __GLSLX_WORKSPACE_HPP__
 #include "args.hpp"
 #include "doc.hpp"
 #include <map>
