@@ -1,5 +1,5 @@
-#ifndef __GLSLD_COMPLETION_H__
-#define __GLSLD_COMPLETION_H__
+#ifndef __GLSLX_COMPLETION_H__
+#define __GLSLX_COMPLETION_H__
 
 #include "doc.hpp"
 #include "lsp_defs.hpp"

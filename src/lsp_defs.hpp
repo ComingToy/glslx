@@ -1,5 +1,5 @@
-#ifndef __GLSLD_LSP_DEFS_HPP__
-#define __GLSLD_LSP_DEFS_HPP__
+#ifndef __GLSLX_LSP_DEFS_HPP__
+#define __GLSLX_LSP_DEFS_HPP__
 
 #include "nlohmann/json.hpp"
 #include <string>
