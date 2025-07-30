@@ -212,7 +212,6 @@ bool Doc::parse(CompileOption const& option)
         return false;
     }
 
-    tokenize_(compile_option);
     std::cerr << shader.getInfoDebugLog() << std::endl;
     auto* interm = shader.getIntermediate();
 
@@ -257,6 +256,7 @@ bool Doc::parse(CompileOption const& option)
 
     release_();
     resource_ = resource;
+    tokenize_(compile_option);
 
     return true;
 }
@@ -337,11 +337,11 @@ Doc::LookupResult Doc::lookup_node_in_struct(const int line, const int col)
         for (size_t i = 0; i < members.size(); ++i) {
             auto const& member = members[i];
             if (member.loc.line != line) {
-                return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+                continue;
             }
 
             if (col >= member.loc.column) {
-                return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+                continue;
             }
 
             auto pos = std::find_if(tokens.cbegin(), tokens.cend(), [&member](Token const& tok) {
@@ -398,19 +398,17 @@ std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int co
     if (!resource_)
         return {};
     std::vector<LookupResult> result;
+
     if (resource_->nodes_by_line.count(line) <= 0) {
-        return result;
-    }
-
-    auto& nodes = resource_->nodes_by_line[line];
-
-    if (nodes.empty()) {
         auto ty = lookup_node_in_struct(line, col);
         if (ty.kind != LookupResult::Kind::ERROR) {
             result.push_back(ty);
         }
+
         return result;
     }
+
+    auto& nodes = resource_->nodes_by_line[line];
 
     for (auto* node : nodes) {
         if (auto sym = node->getAsSymbolNode()) {
