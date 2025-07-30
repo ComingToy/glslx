@@ -1,5 +1,5 @@
-#ifndef __GLSLD_PROTOCOL_HPP__
-#define __GLSLD_PROTOCOL_HPP__
+#ifndef __GLSLX_PROTOCOL_HPP__
+#define __GLSLX_PROTOCOL_HPP__
 #include "nlohmann/json.hpp"
 #include "workspace.hpp"
 #include <vector>
@@ -136,8 +136,7 @@ class Protocol {
     void did_change_(nlohmann::json& req);
     void did_save_(nlohmann::json& req);
     void completion_(nlohmann::json& req);
-    nlohmann::json complete_variable_(std::string const& uri, std::string const& input);
-    nlohmann::json complete_field_(std::string const& uri, std::string const& input);
+	void document_symbol_(nlohmann::json& req);
 
     void send_to_client_(nlohmann::json& content);
     void publish_(std::string const& method, nlohmann::json* content);
@@ -148,4 +147,5 @@ public:
     int handle(nlohmann::json& req);
 };
 #endif
+
 

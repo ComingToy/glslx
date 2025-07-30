@@ -1,5 +1,7 @@
-#ifndef __GLSLD_DOC_HPP__
-#define __GLSLD_DOC_HPP__
+#ifndef __GLSLX_DOC_HPP__
+#define __GLSLX_DOC_HPP__
+#include "args.hpp"
+#include "extractors.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
 #include "parser.hpp"
@@ -11,14 +13,7 @@
 
 class Doc {
 public:
-    struct FunctionDefDesc {
-        glslang::TIntermAggregate* def;
-        std::vector<glslang::TIntermSymbol*> args;
-        std::vector<glslang::TIntermSymbol*> local_defs;
-        std::vector<glslang::TIntermSymbol*> local_uses;
-        glslang::TSourceLoc start, end;
-    };
-
+    using FunctionDefDesc = DocInfoExtractor::FunctionDefDesc;
     Doc();
     Doc(std::string const& uri, const int version, std::string const& text);
     Doc(const Doc& rhs);
@@ -27,7 +22,7 @@ public:
     Doc& operator=(Doc&& doc);
     virtual ~Doc();
 
-    bool parse(std::vector<std::string> const& include_dirs);
+    bool parse(CompileOption const& compile_option);
     void update(const int version, std::string const& text)
     {
         if (resource_->version >= version)
@@ -55,29 +50,28 @@ public:
                                                                   std::string const& prefix);
     std::vector<glslang::TSymbol*> lookup_builtin_symbols_by_prefix(std::string const& prefix, bool fullname = false);
     FunctionDefDesc* lookup_func_by_line(int line);
-    std::vector<FunctionDefDesc>& func_defs() { return resource_->func_defs; }
-    std::vector<glslang::TIntermSymbol*>& userdef_types() { return resource_->userdef_types; }
+    const std::vector<FunctionDefDesc>& func_defs() { return resource_->func_defs; }
+    const std::vector<glslang::TIntermSymbol*>& userdef_types() { return resource_->userdef_types; }
+    const std::vector<glslang::TIntermSymbol*>& globals() { return resource_->globals; }
 
     glslang::TIntermSymbol* lookup_symbol_by_name(Doc::FunctionDefDesc* func, std::string const& name);
     glslang::TIntermediate* intermediate()
     {
         return (resource_ && resource_->shader) ? resource_->shader->getIntermediate() : nullptr;
     }
+
     const char* info_log() { return resource_ ? resource_->info_log.c_str() : ""; }
 
     struct LookupResult {
         enum class Kind { SYMBOL, FIELD, TYPE, ERROR } kind;
-        union {
-            glslang::TIntermSymbol* sym;
-            glslang::TTypeLoc field;
-            const glslang::TType* ty;
-        };
+        glslang::TIntermSymbol* sym;
+        glslang::TTypeLoc field;
+        const glslang::TType* ty;
     };
 
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
-    glslang::TSourceLoc locate_userdef_type(const glslang::TType* use);
-    static const TBuiltInResource kDefaultTBuiltInResource;
+    glslang::TSourceLoc locate_userdef_type(int line, const glslang::TType* use);
 
 private:
     typedef decltype(YYSTYPE::lex) lex_info_type;
@@ -106,7 +100,9 @@ private:
 
     __Resource* resource_;
     void infer_language_();
-    void tokenize_();
+    void tokenize_(CompileOption const& option);
     void release_();
+
+    LookupResult lookup_node_in_struct(const int line, const int col);
 };
 #endif

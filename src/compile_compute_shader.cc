@@ -33,7 +33,6 @@
 #include <string>
 
 #include "StandAlone/DirStackFileIncluder.h"
-#include "glslang/Include/BaseTypes.h"
 #include "glslang/Include/InfoSink.h"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
@@ -319,7 +318,7 @@ public:
         return true;
     }
 
-    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override {}
+    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override { return true; }
 };
 
 bool visitAllTypesAndSymbols(glslang::TIntermediate* intermediate)

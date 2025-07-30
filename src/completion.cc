@@ -581,6 +581,25 @@ private:
                 tyname, InsertTextFormat::PlainText};
             results.types.push_back(r);
         }
+
+        auto func = doc_.lookup_func_by_line(line_);
+        if (!func) {
+            return;
+        }
+
+        for (auto* sym : func->userdef_types) {
+            auto loc = sym->getLoc();
+
+            auto const& ty = sym->getType();
+            auto const* tyname = ty.getTypeName().c_str();
+            if (!match_prefix(tyname, prefix))
+                continue;
+
+            CompletionResult r = {
+                tyname, CompletionItemKind::Struct, ty.getCompleteString(true, false, false).c_str(), "",
+                tyname, InsertTextFormat::PlainText};
+            results.types.push_back(r);
+        }
     }
 
     void do_complete_builtin_prefix_(std::string const& prefix, CompletionResultSet& results)
