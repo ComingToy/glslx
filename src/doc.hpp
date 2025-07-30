@@ -100,7 +100,9 @@ private:
 
     __Resource* resource_;
     void infer_language_();
-    void tokenize_();
+    void tokenize_(CompileOption const& option);
     void release_();
+
+    LookupResult lookup_node_in_struct(const int line, const int col);
 };
 #endif

@@ -6,6 +6,7 @@
 #include "glslang/MachineIndependent/SymbolTable.h"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "parser.hpp"
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include <map>
@@ -211,11 +212,11 @@ bool Doc::parse(CompileOption const& option)
         return false;
     }
 
+    tokenize_(compile_option);
     std::cerr << shader.getInfoDebugLog() << std::endl;
-
     auto* interm = shader.getIntermediate();
 
-#if 1
+#if 0
     {
         TInfoSink sink;
         interm->output(sink, true);
@@ -260,11 +261,11 @@ bool Doc::parse(CompileOption const& option)
     return true;
 }
 
-void Doc::tokenize_()
+void Doc::tokenize_(CompileOption const& options)
 {
     // tokenize
-    auto default_version_ = 110;
-    auto default_profile_ = ENoProfile;
+    auto default_version_ = options.version;
+    auto default_profile_ = options.profile;
     auto default_spv = glslang::SpvVersion();
     auto parser = create_parser(default_version_, default_profile_, language(), default_spv, "main");
 
@@ -321,6 +322,77 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
     return {Doc::LookupResult::Kind::ERROR};
 }
 
+Doc::LookupResult Doc::lookup_node_in_struct(const int line, const int col)
+{
+    auto* func = lookup_func_by_line(line);
+    auto const& tokens = resource_->tokens_by_line[line];
+
+    auto lookup_member_type_fn = [line, col, &tokens](const glslang::TType& type) {
+        if (!type.isStruct()) {
+            return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+        }
+
+        auto const& members = *type.getStruct();
+
+        for (size_t i = 0; i < members.size(); ++i) {
+            auto const& member = members[i];
+            if (member.loc.line != line) {
+                return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+            }
+
+            if (col >= member.loc.column) {
+                return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+            }
+
+            auto pos = std::find_if(tokens.cbegin(), tokens.cend(), [&member](Token const& tok) {
+                if (tok.lex.loc.column == member.loc.column) {
+                    return true;
+                }
+                return false;
+            });
+
+            if (pos == tokens.cbegin()) {
+                continue;
+            }
+
+            --pos;
+
+            auto const& type_tok = *pos;
+            if (type_tok.tok != IDENTIFIER && type_tok.tok != TYPE_NAME) {
+                continue;
+            }
+
+            const int type_start_col = type_tok.lex.loc.column;
+            const int type_end_col = type_start_col + type_tok.lex.string->size();
+            if (col >= type_start_col && col <= type_end_col) {
+                return Doc::LookupResult{Doc::LookupResult::Kind::TYPE, nullptr, {}, member.type};
+            }
+        }
+
+        return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+    };
+
+    if (func) {
+        for (auto* def : func->userdef_types) {
+            const auto& type = def->getType();
+
+            auto result = lookup_member_type_fn(type);
+            if (result.kind != LookupResult::Kind::ERROR) {
+                return result;
+            }
+        }
+    }
+
+    for (auto* global : resource_->globals) {
+        auto result = lookup_member_type_fn(global->getType());
+        if (result.kind != LookupResult::Kind::ERROR) {
+            return result;
+        }
+    }
+
+    return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+}
+
 std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int col)
 {
     if (!resource_)
@@ -331,6 +403,15 @@ std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int co
     }
 
     auto& nodes = resource_->nodes_by_line[line];
+
+    if (nodes.empty()) {
+        auto ty = lookup_node_in_struct(line, col);
+        if (ty.kind != LookupResult::Kind::ERROR) {
+            result.push_back(ty);
+        }
+        return result;
+    }
+
     for (auto* node : nodes) {
         if (auto sym = node->getAsSymbolNode()) {
             auto loc = sym->getLoc();
