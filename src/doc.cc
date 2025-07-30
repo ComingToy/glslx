@@ -1,10 +1,12 @@
 #include "doc.hpp"
 #include "StandAlone/DirStackFileIncluder.h"
 #include "args.hpp"
+#include "extractors.hpp"
 #include "glslang/Include/intermediate.h"
 #include "glslang/MachineIndependent/SymbolTable.h"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "parser.hpp"
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include <map>
@@ -103,224 +105,6 @@ void Doc::release_()
     }
 }
 
-struct LocalDefUseExtractor : public glslang::TIntermTraverser {
-public:
-    glslang::TSourceLoc end_loc;
-    std::vector<glslang::TIntermSymbol*> defs, uses;
-    std::map<int, std::vector<TIntermNode*>> nodes_by_line;
-    std::vector<glslang::TIntermSymbol*> userdef_types;
-
-    void visitConstantUnion(glslang::TIntermConstantUnion* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-        nodes_by_line[node->getLoc().line].push_back(node);
-    }
-    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-    bool visitSelection(glslang::TVisit, glslang::TIntermSelection* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-    bool visitAggregate(glslang::TVisit, glslang::TIntermAggregate* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-    bool visitLoop(glslang::TVisit, glslang::TIntermLoop* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-    bool visitBranch(glslang::TVisit, glslang::TIntermBranch* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-    bool visitSwitch(glslang::TVisit, glslang::TIntermSwitch* node) override
-    {
-        auto loc = node->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[node->getLoc().line].push_back(node);
-        return true;
-    }
-
-    void visitSymbol(glslang::TIntermSymbol* symbol) override
-    {
-        auto loc = symbol->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        nodes_by_line[symbol->getLoc().line].push_back(symbol);
-        uses.push_back(symbol);
-    }
-    bool visitUnary(glslang::TVisit v, glslang::TIntermUnary* unary) override
-    {
-        (void)v;
-        nodes_by_line[unary->getLoc().line].push_back(unary);
-        auto loc = unary->getLoc();
-        if (loc.line > end_loc.line) {
-            end_loc = loc;
-        } else if (loc.line == end_loc.line && loc.column > end_loc.column) {
-            end_loc = loc;
-        }
-
-        if (unary->getOp() == glslang::EOpDeclareType) {
-            auto* sym = unary->getOperand()->getAsSymbolNode();
-            if (sym)
-                userdef_types.push_back(sym);
-            return false;
-        } else if (unary->getOp() == glslang::EOpDeclare) {
-            defs.push_back(unary->getOperand()->getAsSymbolNode());
-            return false;
-        } else {
-            return true;
-        }
-    }
-};
-
-class DocInfoExtractor : public glslang::TIntermTraverser {
-public:
-    std::map<int, std::vector<TIntermNode*>> nodes_by_line;
-    std::vector<glslang::TIntermSymbol*> uses;
-    std::vector<glslang::TIntermSymbol*> globals;
-    std::vector<Doc::FunctionDefDesc> funcs;
-    std::vector<glslang::TIntermSymbol*> userdef_types;
-    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override
-    {
-        if (node->getOp() == glslang::EOpIndexDirectStruct || node->getOp() == glslang::EOpIndexDirect ||
-            node->getOp() == glslang::EOpIndexIndirect) {
-            nodes_by_line[node->getLoc().line].push_back(node);
-        }
-        return true;
-    }
-
-    bool visitAggregate(glslang::TVisit, glslang::TIntermAggregate* agg) override
-    {
-        if (agg->getOp() == glslang::EOpLinkerObjects) {
-            for (auto& obj : agg->getSequence()) {
-                auto sym = obj->getAsSymbolNode();
-                if (!sym)
-                    continue;
-                auto loc = sym->getLoc();
-                if (!loc.name) // builtin
-                    continue;
-                globals.push_back(sym);
-            }
-            return false;
-        }
-
-        if (agg->getOp() == glslang::EOpFunction) {
-
-            struct Doc::FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
-
-            auto& children = agg->getSequence();
-            if (children.size() != 2) {
-                std::cerr << "found func " << agg->getName() << " but children size != 2" << std::endl;
-                return true;
-            }
-
-            std::vector<glslang::TIntermSymbol*> args;
-            auto* params = children[0]->getAsAggregate();
-            if (!params || params->getOp() != glslang::EOpParameters) {
-                std::cerr << "found func " << agg->getName() << " but children[0].op != EOpParameters" << std::endl;
-                return true;
-            }
-
-            for (auto* arg : params->getSequence()) {
-                if (arg->getAsSymbolNode())
-                    function_def.args.push_back(arg->getAsSymbolNode());
-            }
-
-            auto* body = children[1];
-            LocalDefUseExtractor extractor;
-            body->traverse(&extractor);
-            function_def.local_defs.swap(extractor.defs);
-            function_def.local_uses.swap(extractor.uses);
-            function_def.userdef_types.swap(extractor.userdef_types);
-
-            std::cerr << "found function def " << agg->getName() << " at " << agg->getLoc().getFilename() << ":"
-                      << agg->getLoc().line << ":" << agg->getLoc().column << " to "
-                      << body->getAsAggregate()->getEndLoc().line
-                      << " return type: " << agg->getType().getCompleteString() << " has " << agg->getSequence().size()
-                      << " sub nodes" << std::endl;
-
-            function_def.end = body->getAsAggregate()->getEndLoc();
-            funcs.emplace_back(std::move(function_def));
-            for (auto [line, node] : extractor.nodes_by_line) {
-                nodes_by_line[line] = node;
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-    void visitConstantUnion(glslang::TIntermConstantUnion* node) override {}
-    bool visitUnary(glslang::TVisit v, glslang::TIntermUnary* unary) override
-    {
-        if (unary->getOp() == glslang::EOpDeclareType) {
-            auto* sym = unary->getOperand()->getAsSymbolNode();
-            if (sym)
-                userdef_types.push_back(sym);
-            return false;
-        }
-
-        return true;
-    }
-};
-
 class BuiltinSymbolTable : public glslang::TSymbolTable {
 public:
     void get_all_symbols(std::vector<glslang::TSymbol*>& symbols)
@@ -329,6 +113,12 @@ public:
             glslang::TSymbolTableLevel* table_level = table[level];
             for (auto pos = table_level->get_level().begin(); pos != table_level->get_level().end(); ++pos) {
                 symbols.push_back(pos->second);
+                if (auto var = pos->second->getAsVariable()) {
+                    auto loc = var->getLoc();
+                    const auto& type = var->getType();
+                    if (loc.name && type.isStruct()) {
+                    }
+                }
             }
         }
     }
@@ -423,7 +213,6 @@ bool Doc::parse(CompileOption const& option)
     }
 
     std::cerr << shader.getInfoDebugLog() << std::endl;
-
     auto* interm = shader.getIntermediate();
 
 #if 0
@@ -467,15 +256,16 @@ bool Doc::parse(CompileOption const& option)
 
     release_();
     resource_ = resource;
+    tokenize_(compile_option);
 
     return true;
 }
 
-void Doc::tokenize_()
+void Doc::tokenize_(CompileOption const& options)
 {
     // tokenize
-    auto default_version_ = 110;
-    auto default_profile_ = ENoProfile;
+    auto default_version_ = options.version;
+    auto default_profile_ = options.profile;
     auto default_spv = glslang::SpvVersion();
     auto parser = create_parser(default_version_, default_profile_, language(), default_spv, "main");
 
@@ -532,16 +322,94 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
     return {Doc::LookupResult::Kind::ERROR};
 }
 
+Doc::LookupResult Doc::lookup_node_in_struct(const int line, const int col)
+{
+    auto* func = lookup_func_by_line(line);
+    auto const& tokens = resource_->tokens_by_line[line];
+
+    auto lookup_member_type_fn = [line, col, &tokens](const glslang::TType& type) {
+        if (!type.isStruct()) {
+            return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+        }
+
+        auto const& members = *type.getStruct();
+
+        for (size_t i = 0; i < members.size(); ++i) {
+            auto const& member = members[i];
+            if (member.loc.line != line) {
+                continue;
+            }
+
+            if (col >= member.loc.column) {
+                continue;
+            }
+
+            auto pos = std::find_if(tokens.cbegin(), tokens.cend(), [&member](Token const& tok) {
+                if (tok.lex.loc.column == member.loc.column) {
+                    return true;
+                }
+                return false;
+            });
+
+            if (pos == tokens.cbegin()) {
+                continue;
+            }
+
+            --pos;
+
+            auto const& type_tok = *pos;
+            if (type_tok.tok != IDENTIFIER && type_tok.tok != TYPE_NAME) {
+                continue;
+            }
+
+            const int type_start_col = type_tok.lex.loc.column;
+            const int type_end_col = type_start_col + type_tok.lex.string->size();
+            if (col >= type_start_col && col <= type_end_col) {
+                return Doc::LookupResult{Doc::LookupResult::Kind::TYPE, nullptr, {}, member.type};
+            }
+        }
+
+        return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+    };
+
+    if (func) {
+        for (auto* def : func->userdef_types) {
+            const auto& type = def->getType();
+
+            auto result = lookup_member_type_fn(type);
+            if (result.kind != LookupResult::Kind::ERROR) {
+                return result;
+            }
+        }
+    }
+
+    for (auto* global : resource_->globals) {
+        auto result = lookup_member_type_fn(global->getType());
+        if (result.kind != LookupResult::Kind::ERROR) {
+            return result;
+        }
+    }
+
+    return Doc::LookupResult{Doc::LookupResult::Kind::ERROR, nullptr, {}, nullptr};
+}
+
 std::vector<Doc::LookupResult> Doc::lookup_nodes_at(const int line, const int col)
 {
     if (!resource_)
         return {};
     std::vector<LookupResult> result;
+
     if (resource_->nodes_by_line.count(line) <= 0) {
+        auto ty = lookup_node_in_struct(line, col);
+        if (ty.kind != LookupResult::Kind::ERROR) {
+            result.push_back(ty);
+        }
+
         return result;
     }
 
     auto& nodes = resource_->nodes_by_line[line];
+
     for (auto* node : nodes) {
         if (auto sym = node->getAsSymbolNode()) {
             auto loc = sym->getLoc();
