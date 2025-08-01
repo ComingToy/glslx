@@ -1,6 +1,7 @@
 #include "protocol.hpp"
 #include "completion.hpp"
 #include "document_symbol.hpp"
+#include "semantic_token.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -40,6 +41,8 @@ int Protocol::handle(nlohmann::json& req)
         did_save_(req);
     } else if (method == "textDocument/documentSymbol") {
         document_symbol_(req);
+    } else if (method == "textDocument/semanticTokens/full") {
+        semantic_token_(req);
     }
 
     return 0;
@@ -119,7 +122,13 @@ void Protocol::initialize_(nlohmann::json& req)
 			"selectionRangeProvider": false,
 			"linkedEditingRangeProvider": false,
 			"callHierarchyProvider": false,
-			"semanticTokensProvider": false,
+			"semanticTokensProvider": {
+				"legend": {
+					"tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator"],
+					"tokenModifiers": ["declaration", "definition", "readonly", "static"]
+				},
+				"full": true
+			},
 			"monikerProvider": false,
 			"typeHierarchyProvider": false,
 			"inlineValueProvider": false,
@@ -311,6 +320,22 @@ void Protocol::document_symbol_(nlohmann::json& req)
     }
 
     make_response_(req, &arr);
+}
+
+void Protocol::semantic_token_(nlohmann::json& req)
+{
+    auto& params = req["params"];
+    std::string uri = params["textDocument"]["uri"];
+    auto* doc = workspace_.get_doc(uri);
+    if (!doc) {
+        make_response_(req, nullptr);
+    }
+
+    auto tokens = semantic_token(doc);
+    nlohmann::json result;
+    result["data"] = tokens;
+
+    make_response_(req, &result);
 }
 
 void Protocol::publish_(std::string const& method, nlohmann::json* params)

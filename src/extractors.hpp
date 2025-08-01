@@ -133,6 +133,7 @@ public:
 class DocInfoExtractor : public glslang::TIntermTraverser {
 public:
     struct FunctionDefDesc {
+        std::string name;
         glslang::TIntermAggregate* def;
         std::vector<glslang::TIntermSymbol*> args;
         std::vector<glslang::TIntermSymbol*> local_defs;
@@ -170,9 +171,19 @@ public:
             return false;
         }
 
+        auto norm_func_name = [](std::string const& fname) {
+            auto pos = fname.find("(");
+            if (pos == std::string::npos) {
+                return fname;
+            }
+
+            return std::string(fname.begin(), fname.begin() + pos);
+        };
+
         if (agg->getOp() == glslang::EOpFunction) {
 
-            struct FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
+            struct FunctionDefDesc function_def = {
+                norm_func_name(agg->getName().c_str()), agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
 
             auto& children = agg->getSequence();
             if (children.size() != 2) {
