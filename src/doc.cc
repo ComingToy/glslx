@@ -7,11 +7,12 @@
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "parser.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
+#include <stack>
 #include <utility>
 #include <vector>
 
@@ -134,7 +135,7 @@ bool Doc::parse(CompileOption const& option)
     auto stage = compile_option.shader_stage == EShLangCount ? language() : compile_option.shader_stage;
 
     if (stage == EShLangCount) {
-        std::cerr << "unkown stage: " << uri() << std::endl;
+        fprintf(stderr, "unkown stage: %s\n", uri().c_str());
         return false;
     }
     resource->shader = std::make_unique<glslang::TShader>(stage);
@@ -204,6 +205,25 @@ bool Doc::parse(CompileOption const& option)
 
     bool success = false;
 
+    std::map<std::string, std::map<int, int>> pp_cond_res;
+    shader.setPpCondRes(&pp_cond_res);
+
+    std::string preprocessed_text;
+    success = shader.preprocess(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_,
+                                false, rules, &preprocessed_text, includer);
+
+    if (!success) {
+        resource_->info_log = shader.getInfoLog();
+        delete resource;
+        return false;
+    }
+
+    for (auto const& [filename, cond_res] : pp_cond_res) {
+        for (auto const& [line, res] : cond_res) {
+            fprintf(stderr, "%s:%d cond result: %d\n", filename.c_str(), line, res);
+        }
+    }
+
     success = shader.parse(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_, false,
                            rules, includer);
     if (!success) {
@@ -212,7 +232,7 @@ bool Doc::parse(CompileOption const& option)
         return false;
     }
 
-    std::cerr << shader.getInfoDebugLog() << std::endl;
+    fprintf(stderr, "%s\n", shader.getInfoDebugLog());
     auto* interm = shader.getIntermediate();
 
 #if 0
@@ -241,7 +261,7 @@ bool Doc::parse(CompileOption const& option)
                 type.getCompleteString(true, false, false).c_str(), loc.getFilename(), loc.line, loc.column);
     }
 
-    std::cerr << "DocInfoExtractor found " << visitor.funcs.size() << " function def" << std::endl;
+    fprintf(stderr, "DocInfoExtractor found %zu function def\n", visitor.funcs.size());
     resource->globals.swap(visitor.globals);
     resource->func_defs.swap(visitor.funcs);
     resource->nodes_by_line.swap(visitor.nodes_by_line);
@@ -256,7 +276,8 @@ bool Doc::parse(CompileOption const& option)
 
     release_();
     resource_ = resource;
-    tokenize_(compile_option);
+    // tokenize_(compile_option);
+    compute_inactive_blocks_(pp_cond_res);
 
     return true;
 }
@@ -320,6 +341,155 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
     }
 
     return {Doc::LookupResult::Kind::ERROR};
+}
+
+void Doc::compute_inactive_blocks_(std::map<std::string, std::map<int, int>>& cond_res)
+{
+    struct ConditionalTree {
+        Range if_;
+        std::vector<Range> elif_;
+        Range else_;
+    };
+
+    auto is_kw = [this](const int i, std::string_view kw) {
+        auto const& s = resource_->lines_[i];
+        if (s.size() < kw.size())
+            return false;
+
+        const char* p = s.c_str();
+        while (p && isspace(*p)) {
+            ++p;
+        }
+
+        if (!p)
+            return false;
+
+        std::string_view sv = p;
+        return sv.substr(0, kw.size()) == kw;
+    };
+
+    struct _Token {
+        enum class TokenKind { IF, ELSE, ELIF, ENDIF } kind;
+        int line;
+    };
+
+    std::vector<_Token> toks;
+    for (int i = 0; i < resource_->lines_.size(); ++i) {
+        if (is_kw(i, "#if")) {
+            toks.push_back({_Token::TokenKind::IF, i});
+        } else if (is_kw(i, "#elif")) {
+            toks.push_back({_Token::TokenKind::ELIF, i});
+        } else if (is_kw(i, "#endif")) {
+            toks.push_back({_Token::TokenKind::ENDIF, i});
+        } else if (is_kw(i, "#else")) {
+            toks.push_back({_Token::TokenKind::ELSE, i});
+        } else {
+            continue;
+        }
+    }
+
+    if (toks.size() < 2) {
+        return;
+    }
+
+    std::vector<ConditionalTree> conditional_blocks;
+    std::stack<_Token> stack;
+
+    auto reduce_fn = [&conditional_blocks, &stack]() {
+        if (stack.top().kind != _Token::TokenKind::ENDIF)
+            return;
+
+        std::vector<_Token> frag;
+        frag.push_back(stack.top());
+        stack.pop();
+
+        while (stack.top().kind != _Token::TokenKind::IF) {
+            frag.push_back(stack.top());
+            stack.pop();
+        }
+
+        frag.push_back(stack.top());
+        stack.pop();
+
+        if (frag.size() < 2) {
+            return;
+        }
+
+        auto pos = frag.rbegin();
+        auto start = *pos;
+        ConditionalTree block;
+
+        for (; pos != frag.rend(); ++pos) {
+            if (pos->kind == _Token::TokenKind::ELIF) {
+                if (start.kind == _Token::TokenKind::IF) {
+                    block.if_ = {start.line, pos->line};
+                } else if (start.kind == _Token::TokenKind::ELIF) {
+                    block.elif_.push_back({start.line, pos->line});
+                }
+            } else if (pos->kind == _Token::TokenKind::ENDIF) {
+                if (start.kind == _Token::TokenKind::IF) {
+                    block.if_ = {start.line, pos->line};
+                } else if (start.kind == _Token::TokenKind::ELIF) {
+                    block.elif_.push_back({start.line, pos->line});
+                } else if (start.kind == _Token::TokenKind::ELSE) {
+                    block.else_ = {start.line, pos->line};
+                }
+            } else if (pos->kind == _Token::TokenKind::ELSE) {
+                if (start.kind == _Token::TokenKind::IF) {
+                    block.if_ = {start.line, pos->line};
+                } else if (start.kind == _Token::TokenKind::ELIF) {
+                    block.elif_.push_back({start.line, pos->line});
+                }
+            }
+            start = *pos;
+        }
+
+        conditional_blocks.push_back(block);
+    };
+
+    stack.push(toks.front());
+    if (stack.top().kind != _Token::TokenKind::IF) {
+        return;
+    }
+
+    int state = 0; // 0 expecting elif/endif/if/else, 1: for expecting if
+    for (int i = 1; i < toks.size(); ++i) {
+        const auto& tok = toks[i];
+        if (state == 0) {
+            switch (tok.kind) {
+            case _Token::TokenKind::IF:
+            case _Token::TokenKind::ELSE:
+            case _Token::TokenKind::ELIF:
+                stack.push(tok);
+                break;
+            case _Token::TokenKind::ENDIF:
+                stack.push(tok);
+                reduce_fn();
+                if (stack.empty()) {
+                    state = 1;
+                }
+                break;
+            default:
+                break;
+            }
+        } else if (state == 1) {
+            if (tok.kind == _Token::TokenKind::IF) {
+                stack.push(tok);
+                state = 0;
+            } else {
+                return; // error
+            }
+        } else {
+            return; //error
+        }
+    }
+
+    for (auto const& block : conditional_blocks) {
+        fprintf(stderr, "%s condition block #if at [%d, %d]\n", uri().c_str(), block.if_.start, block.if_.end);
+        for (auto const& elif : block.elif_) {
+            fprintf(stderr, "    #elif at [%d, %d]\n", elif.start, elif.end);
+        }
+    }
 }
 
 Doc::LookupResult Doc::lookup_node_in_struct(const int line, const int col)

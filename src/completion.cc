@@ -309,21 +309,13 @@ private:
         };
 
         auto& func_defs = doc_.func_defs();
-        auto norm_func_name = [](std::string const& fname) {
-            auto pos = fname.find("(");
-            if (pos == std::string::npos) {
-                return fname;
-            }
-
-            return std::string(fname.begin(), fname.begin() + pos);
-        };
 
         for (const auto& func : func_defs) {
             if (!match_prefix(func.def->getName().c_str())) {
                 continue;
             }
 
-            auto label = norm_func_name(func.def->getName().c_str());
+            const auto& label = func.name;
             std::string return_type;
             auto const& rtype = func.def->getType();
             if (rtype.isStruct()) {

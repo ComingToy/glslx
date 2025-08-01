@@ -8,6 +8,8 @@ add_library(
 	protocol.hpp
 	completion.cc
 	completion.hpp
+    semantic_token.cc
+    semantic_token.hpp
 	doc.cc
 	doc.hpp
 	workspace.cc

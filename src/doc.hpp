@@ -69,6 +69,10 @@ public:
         const glslang::TType* ty;
     };
 
+    struct Range {
+        int start, end;
+    };
+
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
     glslang::TSourceLoc locate_userdef_type(int line, const glslang::TType* use);
@@ -95,6 +99,7 @@ private:
         std::map<int, std::vector<Token>> tokens_by_line;
         std::vector<glslang::TSymbol*> builtins;
         std::string info_log;
+        std::vector<Range> inactive_blocks_;
         int ref = 1;
     };
 
@@ -104,5 +109,6 @@ private:
     void release_();
 
     LookupResult lookup_node_in_struct(const int line, const int col);
+    void compute_inactive_blocks_(std::map<std::string, std::map<int, int>>& cond_res);
 };
 #endif
