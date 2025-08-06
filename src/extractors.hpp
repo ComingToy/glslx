@@ -1,6 +1,7 @@
 #ifndef __GLSLX_EXTRACTORS_HPP__
 #define __GLSLX_EXTRACTORS_HPP__
 #include "glslang/Include/intermediate.h"
+#include <cstdio>
 #include <iostream>
 
 struct LocalDefUseExtractor : public glslang::TIntermTraverser {
@@ -187,14 +188,14 @@ public:
 
             auto& children = agg->getSequence();
             if (children.size() != 2) {
-                std::cerr << "found func " << agg->getName() << " but children size != 2" << std::endl;
+                fprintf(stderr, "found func %s but children size != 2\n", agg->getName().c_str());
                 return true;
             }
 
             std::vector<glslang::TIntermSymbol*> args;
             auto* params = children[0]->getAsAggregate();
             if (!params || params->getOp() != glslang::EOpParameters) {
-                std::cerr << "found func " << agg->getName() << " but children[0].op != EOpParameters" << std::endl;
+                fprintf(stderr, "found func %s but children[0].op != EOpParameters\n", agg->getName().c_str());
                 return true;
             }
 
@@ -210,11 +211,10 @@ public:
             function_def.local_uses.swap(extractor.uses);
             function_def.userdef_types.swap(extractor.userdef_types);
 
-            std::cerr << "found function def " << agg->getName() << " at " << agg->getLoc().getFilename() << ":"
-                      << agg->getLoc().line << ":" << agg->getLoc().column << " to "
-                      << body->getAsAggregate()->getEndLoc().line
-                      << " return type: " << agg->getType().getCompleteString() << " has " << agg->getSequence().size()
-                      << " sub nodes" << std::endl;
+            fprintf(stderr, "found func def %s at %s:%d:%d to %d return type: %s has %zu sub nodes\n",
+                    agg->getName().c_str(), agg->getLoc().getFilename(), agg->getLoc().line, agg->getLoc().column,
+                    body->getAsAggregate()->getEndLoc().line, agg->getType().getCompleteString().c_str(),
+                    agg->getSequence().size());
 
             function_def.end = body->getAsAggregate()->getEndLoc();
             funcs.emplace_back(std::move(function_def));
