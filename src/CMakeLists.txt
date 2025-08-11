@@ -20,6 +20,8 @@ add_library(
 	lsp_defs.hpp
     args.cc
     args.hpp
+    compute_inactive.hpp
+    compute_inactive.cc
 )
 
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)

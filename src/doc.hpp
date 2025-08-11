@@ -1,6 +1,7 @@
 #ifndef __GLSLX_DOC_HPP__
 #define __GLSLX_DOC_HPP__
 #include "args.hpp"
+#include "compute_inactive.hpp"
 #include "extractors.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
@@ -34,6 +35,7 @@ public:
 
     int version() const { return resource_->version; }
     std::vector<std::string> const& lines() const { return resource_->lines_; }
+    auto const& inactive_blocks() const { return resource_->inactive_blocks_; }
     const char* text()
     {
         if (resource_)
@@ -69,13 +71,11 @@ public:
         const glslang::TType* ty;
     };
 
-    struct Range {
-        int start, end;
-    };
-
     std::vector<LookupResult> lookup_nodes_at(const int line, const int col);
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
     glslang::TSourceLoc locate_userdef_type(int line, const glslang::TType* use);
+
+    using Range = ComputeInactiveHelper::Range;
 
 private:
     typedef decltype(YYSTYPE::lex) lex_info_type;

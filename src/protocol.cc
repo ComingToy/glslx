@@ -124,7 +124,7 @@ void Protocol::initialize_(nlohmann::json& req)
 			"callHierarchyProvider": false,
 			"semanticTokensProvider": {
 				"legend": {
-					"tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator"],
+					"tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator", "comment"],
 					"tokenModifiers": ["declaration", "definition", "readonly", "static"]
 				},
 				"full": true

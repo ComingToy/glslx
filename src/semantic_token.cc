@@ -7,7 +7,7 @@
 nlohmann::json semantic_token(Doc* doc)
 {
     /*
-	 * "tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator"],
+	 * "tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator", "comment"],
 	 * "tokenModifiers": ["declaration", "definition", "readonly", "static"]
 	 * */
     struct Token {
@@ -55,6 +55,13 @@ nlohmann::json semantic_token(Doc* doc)
                 continue;
             }
             tokens.push_back({loc.line - 1, loc.column - 1, (int)name.size(), 3, 0});
+        }
+    }
+
+    auto const& lines = doc->lines();
+    for (auto const& block : doc->inactive_blocks()) {
+        for (int i = block.start; i <= block.end; ++i) {
+            tokens.push_back({i, 0, (int)lines[i].size(), 10, 0});
         }
     }
 

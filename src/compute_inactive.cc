@@ -1,0 +1,190 @@
+#include "compute_inactive.hpp"
+#include <cstdio>
+#include <map>
+#include <vector>
+
+ComputeInactiveHelper::ComputeInactiveHelper(std::vector<std::string> const& lines, std::map<int, int> const& cond)
+    : pos_(0), cond_(cond)
+{
+    auto is_kw = [&lines](const int i, std::string_view kw) {
+        auto const& s = lines[i];
+        if (s.size() < kw.size())
+            return false;
+
+        const char* p = s.c_str();
+        while (p && isspace(*p)) {
+            ++p;
+        }
+
+        if (!p)
+            return false;
+
+        std::string_view sv = p;
+        return sv.substr(0, kw.size()) == kw;
+    };
+
+    std::vector<_Token> toks;
+    for (int i = 0; i < lines.size(); ++i) {
+        if (is_kw(i, "#if")) {
+            toks.push_back({_Token::TokenKind::IF, i});
+            fprintf(stderr, "tok %s at %d\n", "#if", i);
+        } else if (is_kw(i, "#elif")) {
+            toks.push_back({_Token::TokenKind::ELIF, i});
+            fprintf(stderr, "tok %s at %d\n", "#elif", i);
+        } else if (is_kw(i, "#endif")) {
+            toks.push_back({_Token::TokenKind::ENDIF, i});
+            fprintf(stderr, "tok %s at %d\n", "#endif", i);
+        } else if (is_kw(i, "#else")) {
+            toks.push_back({_Token::TokenKind::ELSE, i});
+            fprintf(stderr, "tok %s at %d\n", "#else", i);
+        } else {
+            continue;
+        }
+    }
+
+    inputs_.swap(toks);
+}
+
+bool ComputeInactiveHelper::match(ComputeInactiveHelper::_Token::TokenKind tok) { return inputs_[pos_].kind == tok; }
+void ComputeInactiveHelper::eat() { ++pos_; }
+int ComputeInactiveHelper::line() { return inputs_[pos_].line; }
+
+ComputeInactiveHelper::BlockAST* ComputeInactiveHelper::parse_block()
+{
+    auto* block = new BlockAST;
+
+    if (!match(_Token::TokenKind::IF)) {
+        return nullptr;
+    }
+
+    block->lines.if_ = line();
+
+    eat();
+    block->then = parse_block();
+
+    while (match(_Token::TokenKind::ELIF)) {
+        block->lines.elif_.push_back(line());
+        eat();
+        block->elif.push_back(parse_block());
+    }
+
+    if (match(_Token::TokenKind::ELSE)) {
+        block->lines.el_ = line();
+        eat();
+        block->el = parse_block();
+    }
+
+    if (!match(_Token::TokenKind::ENDIF)) {
+        return nullptr;
+    }
+
+    block->lines.endif_ = line();
+    eat();
+
+    return block;
+}
+
+std::vector<ComputeInactiveHelper::BlockAST*> ComputeInactiveHelper::parse()
+{
+    std::vector<BlockAST*> blocks;
+    while (pos_ < inputs_.size()) {
+        auto* b = parse_block();
+        if (!b) {
+            break;
+        }
+
+        blocks.push_back(b);
+    }
+
+    return blocks;
+}
+
+std::vector<ComputeInactiveHelper::Range> ComputeInactiveHelper::inactive()
+{
+    auto blocks = parse();
+    std::vector<Range> inactive_blocks;
+    for (auto const& block : blocks) {
+        compute_inactive(block, inactive_blocks);
+    }
+
+    return inactive_blocks;
+}
+
+void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* block,
+                                             std::vector<ComputeInactiveHelper::Range>& result)
+{
+    if (!block)
+        return;
+
+    auto pos = cond_.find(block->lines.if_ + 2);
+    if (pos == cond_.end()) {
+        fprintf(stderr, "#if at line %d but cond result not found\n", block->lines.if_);
+        return;
+    }
+
+    if (!pos->second) {
+        if (block->lines.elif_.empty() && block->lines.el_ < 0) { //#if .. #endif
+            result.push_back(Range{block->lines.if_, block->lines.endif_});
+            return;
+        } else if (block->lines.elif_.empty() && block->lines.el_ >= 0) { //#if #else #endif
+            result.push_back(Range{block->lines.if_, block->lines.endif_});
+            compute_inactive(block->el, result);
+        } else if (!block->lines.elif_.empty() && block->lines.el_ < 0) { // #if #elif #elif #endif
+            result.push_back({block->lines.if_, block->lines.elif_.front()});
+            for (int i = 0; i < block->lines.elif_.size(); ++i) {
+                pos = cond_.find(block->lines.elif_[i] + 2);
+                if (pos == cond_.end())
+                    return;
+
+                if (pos->second) {
+                    compute_inactive(block->elif[i], result);
+                    break;
+                } else {
+                    int end = i == block->lines.elif_.size() - 1 ? block->lines.endif_ : block->lines.elif_[i + 1];
+                    result.push_back({block->lines.elif_[i], end});
+                }
+            }
+        } else { //#if #elif #else #endif
+            result.push_back({block->lines.if_, block->lines.elif_.front()});
+            bool goto_el = true;
+
+            for (int i = 0; i < block->lines.elif_.size(); ++i) {
+                pos = cond_.find(block->lines.elif_[i] + 2);
+                if (pos == cond_.end())
+                    return;
+
+                if (pos->second) {
+                    compute_inactive(block->elif[i], result);
+                    goto_el = false;
+                    break;
+                } else {
+                    int end = i == block->lines.elif_.size() - 1 ? block->lines.el_ : block->lines.elif_[i + 1];
+                    result.push_back({block->lines.elif_[i], end});
+                }
+            }
+
+            if (goto_el) {
+                compute_inactive(block->el, result);
+            } else {
+                result.push_back({block->lines.el_, block->lines.endif_});
+            }
+        }
+    } else {
+        compute_inactive(block->then, result);
+        if (block->lines.elif_.empty() && block->lines.el_ < 0) {         //#if .. #endif
+        } else if (block->lines.elif_.empty() && block->lines.el_ >= 0) { //#if #else #endif
+            result.push_back({block->lines.el_, block->lines.endif_});
+        } else if (!block->lines.elif_.empty() && block->lines.el_ < 0) { // #if #elif #elif #endif
+            for (int i = 0; i < block->lines.elif_.size(); ++i) {
+                int end = i == block->lines.elif_.size() - 1 ? block->lines.endif_ : block->lines.elif_[i + 1];
+                result.push_back({block->lines.elif_[i], end});
+            }
+        } else { //#if #elif #else #endif
+            for (int i = 0; i < block->lines.elif_.size(); ++i) {
+                int end = i == block->lines.elif_.size() - 1 ? block->lines.endif_ : block->lines.elif_[i + 1];
+                result.push_back({block->lines.elif_[i], end});
+            }
+            result.push_back({block->lines.el_, block->lines.endif_});
+        }
+    }
+}

@@ -7,7 +7,6 @@
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "parser.hpp"
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -345,150 +344,11 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
 
 void Doc::compute_inactive_blocks_(std::map<std::string, std::map<int, int>>& cond_res)
 {
-    struct ConditionalTree {
-        Range if_;
-        std::vector<Range> elif_;
-        Range else_;
-    };
-
-    auto is_kw = [this](const int i, std::string_view kw) {
-        auto const& s = resource_->lines_[i];
-        if (s.size() < kw.size())
-            return false;
-
-        const char* p = s.c_str();
-        while (p && isspace(*p)) {
-            ++p;
-        }
-
-        if (!p)
-            return false;
-
-        std::string_view sv = p;
-        return sv.substr(0, kw.size()) == kw;
-    };
-
-    struct _Token {
-        enum class TokenKind { IF, ELSE, ELIF, ENDIF } kind;
-        int line;
-    };
-
-    std::vector<_Token> toks;
-    for (int i = 0; i < resource_->lines_.size(); ++i) {
-        if (is_kw(i, "#if")) {
-            toks.push_back({_Token::TokenKind::IF, i});
-        } else if (is_kw(i, "#elif")) {
-            toks.push_back({_Token::TokenKind::ELIF, i});
-        } else if (is_kw(i, "#endif")) {
-            toks.push_back({_Token::TokenKind::ENDIF, i});
-        } else if (is_kw(i, "#else")) {
-            toks.push_back({_Token::TokenKind::ELSE, i});
-        } else {
-            continue;
-        }
-    }
-
-    if (toks.size() < 2) {
-        return;
-    }
-
-    std::vector<ConditionalTree> conditional_blocks;
-    std::stack<_Token> stack;
-
-    auto reduce_fn = [&conditional_blocks, &stack]() {
-        if (stack.top().kind != _Token::TokenKind::ENDIF)
-            return;
-
-        std::vector<_Token> frag;
-        frag.push_back(stack.top());
-        stack.pop();
-
-        while (stack.top().kind != _Token::TokenKind::IF) {
-            frag.push_back(stack.top());
-            stack.pop();
-        }
-
-        frag.push_back(stack.top());
-        stack.pop();
-
-        if (frag.size() < 2) {
-            return;
-        }
-
-        auto pos = frag.rbegin();
-        auto start = *pos;
-        ConditionalTree block;
-
-        for (; pos != frag.rend(); ++pos) {
-            if (pos->kind == _Token::TokenKind::ELIF) {
-                if (start.kind == _Token::TokenKind::IF) {
-                    block.if_ = {start.line, pos->line};
-                } else if (start.kind == _Token::TokenKind::ELIF) {
-                    block.elif_.push_back({start.line, pos->line});
-                }
-            } else if (pos->kind == _Token::TokenKind::ENDIF) {
-                if (start.kind == _Token::TokenKind::IF) {
-                    block.if_ = {start.line, pos->line};
-                } else if (start.kind == _Token::TokenKind::ELIF) {
-                    block.elif_.push_back({start.line, pos->line});
-                } else if (start.kind == _Token::TokenKind::ELSE) {
-                    block.else_ = {start.line, pos->line};
-                }
-            } else if (pos->kind == _Token::TokenKind::ELSE) {
-                if (start.kind == _Token::TokenKind::IF) {
-                    block.if_ = {start.line, pos->line};
-                } else if (start.kind == _Token::TokenKind::ELIF) {
-                    block.elif_.push_back({start.line, pos->line});
-                }
-            }
-            start = *pos;
-        }
-
-        conditional_blocks.push_back(block);
-    };
-
-    stack.push(toks.front());
-    if (stack.top().kind != _Token::TokenKind::IF) {
-        return;
-    }
-
-    int state = 0; // 0 expecting elif/endif/if/else, 1: for expecting if
-    for (int i = 1; i < toks.size(); ++i) {
-        const auto& tok = toks[i];
-        if (state == 0) {
-            switch (tok.kind) {
-            case _Token::TokenKind::IF:
-            case _Token::TokenKind::ELSE:
-            case _Token::TokenKind::ELIF:
-                stack.push(tok);
-                break;
-            case _Token::TokenKind::ENDIF:
-                stack.push(tok);
-                reduce_fn();
-                if (stack.empty()) {
-                    state = 1;
-                }
-                break;
-            default:
-                break;
-            }
-        } else if (state == 1) {
-            if (tok.kind == _Token::TokenKind::IF) {
-                stack.push(tok);
-                state = 0;
-            } else {
-                return; // error
-            }
-        } else {
-            return; //error
-        }
-    }
-
-    for (auto const& block : conditional_blocks) {
-        fprintf(stderr, "%s condition block #if at [%d, %d]\n", uri().c_str(), block.if_.start, block.if_.end);
-        for (auto const& elif : block.elif_) {
-            fprintf(stderr, "    #elif at [%d, %d]\n", elif.start, elif.end);
-        }
+    auto& file_cond_res = cond_res[uri()];
+    ComputeInactiveHelper helper(resource_->lines_, file_cond_res);
+    resource_->inactive_blocks_ = helper.inactive();
+    for (auto const& block : resource_->inactive_blocks_) {
+        fprintf(stderr, "block at: [%d, %d]\n", block.start, block.end);
     }
 }
 
