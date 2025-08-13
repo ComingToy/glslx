@@ -27,16 +27,16 @@ ComputeInactiveHelper::ComputeInactiveHelper(std::vector<std::string> const& lin
     for (int i = 0; i < lines.size(); ++i) {
         if (is_kw(i, "#if")) {
             toks.push_back({_Token::TokenKind::IF, i});
-            fprintf(stderr, "tok %s at %d\n", "#if", i);
+            // fprintf(stderr, "tok %s at %d\n", "#if", i);
         } else if (is_kw(i, "#elif")) {
             toks.push_back({_Token::TokenKind::ELIF, i});
-            fprintf(stderr, "tok %s at %d\n", "#elif", i);
+            // fprintf(stderr, "tok %s at %d\n", "#elif", i);
         } else if (is_kw(i, "#endif")) {
             toks.push_back({_Token::TokenKind::ENDIF, i});
-            fprintf(stderr, "tok %s at %d\n", "#endif", i);
+            // fprintf(stderr, "tok %s at %d\n", "#endif", i);
         } else if (is_kw(i, "#else")) {
             toks.push_back({_Token::TokenKind::ELSE, i});
-            fprintf(stderr, "tok %s at %d\n", "#else", i);
+            // fprintf(stderr, "tok %s at %d\n", "#else", i);
         } else {
             continue;
         }
@@ -60,18 +60,26 @@ ComputeInactiveHelper::BlockAST* ComputeInactiveHelper::parse_block()
     block->lines.if_ = line();
 
     eat();
-    block->then = parse_block();
+    while (auto* p = parse_block()) {
+        block->then.push_back(p);
+    }
 
     while (match(_Token::TokenKind::ELIF)) {
         block->lines.elif_.push_back(line());
         eat();
-        block->elif.push_back(parse_block());
+        std::vector<BlockAST*> v;
+        while (auto* p = parse_block()) {
+            v.push_back(p);
+        }
+        block->elif.push_back(v);
     }
 
     if (match(_Token::TokenKind::ELSE)) {
         block->lines.el_ = line();
         eat();
-        block->el = parse_block();
+        while (auto* p = parse_block()) {
+            block->el.push_back(p);
+        }
     }
 
     if (!match(_Token::TokenKind::ENDIF)) {
@@ -84,6 +92,28 @@ ComputeInactiveHelper::BlockAST* ComputeInactiveHelper::parse_block()
     return block;
 }
 
+static void print_block(ComputeInactiveHelper::BlockAST* block, int depth)
+{
+    if (!block)
+        return;
+
+    std::string header(" ", 4 * depth);
+    fprintf(stderr, "%s#start block at line %d\n", header.c_str(), block->lines.if_);
+    for (auto* p : block->then) {
+        print_block(p, depth + 1);
+    }
+    for (auto& v : block->elif) {
+        for (auto* p : v) {
+            print_block(p, depth + 1);
+        }
+    }
+
+    for (auto* p : block->el) {
+        print_block(p, depth + 1);
+    }
+    fprintf(stderr, "%s#end block at line %d\n", header.c_str(), block->lines.endif_);
+}
+
 std::vector<ComputeInactiveHelper::BlockAST*> ComputeInactiveHelper::parse()
 {
     std::vector<BlockAST*> blocks;
@@ -94,6 +124,7 @@ std::vector<ComputeInactiveHelper::BlockAST*> ComputeInactiveHelper::parse()
         }
 
         blocks.push_back(b);
+        // print_block(b, 0);
     }
 
     return blocks;
@@ -113,8 +144,15 @@ std::vector<ComputeInactiveHelper::Range> ComputeInactiveHelper::inactive()
 void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* block,
                                              std::vector<ComputeInactiveHelper::Range>& result)
 {
+#if 1
     if (!block)
         return;
+
+    auto compute_fn = [this, &result](auto& blocks) {
+        for (auto* p : blocks) {
+            compute_inactive(p, result);
+        }
+    };
 
     auto pos = cond_.find(block->lines.if_ + 2);
     if (pos == cond_.end()) {
@@ -128,7 +166,7 @@ void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* bl
             return;
         } else if (block->lines.elif_.empty() && block->lines.el_ >= 0) { //#if #else #endif
             result.push_back(Range{block->lines.if_, block->lines.endif_});
-            compute_inactive(block->el, result);
+            compute_fn(block->el);
         } else if (!block->lines.elif_.empty() && block->lines.el_ < 0) { // #if #elif #elif #endif
             result.push_back({block->lines.if_, block->lines.elif_.front()});
             for (int i = 0; i < block->lines.elif_.size(); ++i) {
@@ -137,7 +175,7 @@ void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* bl
                     return;
 
                 if (pos->second) {
-                    compute_inactive(block->elif[i], result);
+                    compute_fn(block->elif[i]);
                     break;
                 } else {
                     int end = i == block->lines.elif_.size() - 1 ? block->lines.endif_ : block->lines.elif_[i + 1];
@@ -154,7 +192,7 @@ void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* bl
                     return;
 
                 if (pos->second) {
-                    compute_inactive(block->elif[i], result);
+                    compute_fn(block->elif[i]);
                     goto_el = false;
                     break;
                 } else {
@@ -164,13 +202,13 @@ void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* bl
             }
 
             if (goto_el) {
-                compute_inactive(block->el, result);
+                compute_fn(block->el);
             } else {
                 result.push_back({block->lines.el_, block->lines.endif_});
             }
         }
     } else {
-        compute_inactive(block->then, result);
+        compute_fn(block->then);
         if (block->lines.elif_.empty() && block->lines.el_ < 0) {         //#if .. #endif
         } else if (block->lines.elif_.empty() && block->lines.el_ >= 0) { //#if #else #endif
             result.push_back({block->lines.el_, block->lines.endif_});
@@ -187,4 +225,5 @@ void ComputeInactiveHelper::compute_inactive(ComputeInactiveHelper::BlockAST* bl
             result.push_back({block->lines.el_, block->lines.endif_});
         }
     }
+#endif
 }

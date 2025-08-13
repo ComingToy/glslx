@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <iostream>
 #include <iterator>
+#include <ostream>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -16,6 +17,7 @@ int Protocol::handle(nlohmann::json& req)
 {
     nlohmann::json resp;
     fprintf(stderr, "start handle protocol req: \n%s\n", req.dump(4).c_str());
+    fflush(stderr);
 
     std::string method = req["method"];
     if (method != "initialize" && !init_) {
@@ -157,9 +159,9 @@ void Protocol::did_open_(nlohmann::json& req)
     std::string uri = textDoc["uri"];
     int version = textDoc["version"];
     std::string source = textDoc["text"];
-    Doc doc(uri, version, source);
+    Doc doc(uri, version, source, workspace_.get_compile_option(uri));
     const auto& compile_option = workspace_.get_compile_option(uri);
-    if (!doc.parse(compile_option)) {
+    if (!doc.parse()) {
         publish_diagnostics(doc.info_log());
     } else {
         publish_clear_diagnostics(uri);
@@ -270,14 +272,14 @@ void Protocol::definition_(nlohmann::json& req)
         fprintf(stderr, "server is uninitialized\n");
         return;
     }
-    fprintf(stderr, "handle goto definition\n");
+    // fprintf(stderr, "handle goto definition\n");
 
     auto& params = req["params"];
     std::string uri = params["textDocument"]["uri"];
     int col = params["position"]["character"];
     int line = params["position"]["line"];
 
-    fprintf(stderr, "target sym at %d:%d\n", line, col);
+    // fprintf(stderr, "target sym at %d:%d\n", line, col);
     auto loc = workspace_.locate_symbol_def(uri, line + 1, col + 1);
 
     if (loc.name) {

@@ -11,7 +11,6 @@
 #include <map>
 #include <memory>
 #include <sstream>
-#include <stack>
 #include <utility>
 #include <vector>
 
@@ -21,7 +20,8 @@ Doc::Doc() { resource_ = nullptr; }
 
 Doc::~Doc() { release_(); }
 
-Doc::Doc(std::string const& uri, const int version, std::string const& text)
+Doc::Doc(std::string const& uri, const int version, std::string const& text, CompileOption const& option)
+    : option_(option)
 {
     resource_ = new __Resource;
     resource_->ref = 1;
@@ -46,6 +46,7 @@ void Doc::set_text(std::string const& text)
     }
 
     resource_->text_ = text;
+    compute_inactive_blocks_();
 }
 
 Doc::Doc(const Doc& rhs)
@@ -53,6 +54,7 @@ Doc::Doc(const Doc& rhs)
     release_();
     resource_ = rhs.resource_;
     resource_->ref += 1;
+    option_ = rhs.option_;
 }
 
 Doc::Doc(Doc&& rhs)
@@ -60,6 +62,7 @@ Doc::Doc(Doc&& rhs)
     release_();
     resource_ = rhs.resource_;
     rhs.resource_ = nullptr;
+    option_ = rhs.option_;
 }
 
 Doc& Doc::operator=(const Doc& rhs)
@@ -67,6 +70,7 @@ Doc& Doc::operator=(const Doc& rhs)
     release_();
     resource_ = rhs.resource_;
     resource_->ref += 1;
+    option_ = rhs.option_;
     return *this;
 }
 
@@ -75,6 +79,7 @@ Doc& Doc::operator=(Doc&& rhs)
     release_();
     resource_ = rhs.resource_;
     rhs.resource_ = nullptr;
+    option_ = rhs.option_;
     return *this;
 }
 
@@ -124,44 +129,18 @@ public:
     }
 };
 
-bool Doc::parse(CompileOption const& option)
+std::unique_ptr<glslang::TShader> Doc::create_shader()
 {
-    CompileOption compile_option = option;
-    if (!resource_)
-        return false;
-
-    auto* resource = new Doc::__Resource;
+    CompileOption compile_option = option_;
     auto stage = compile_option.shader_stage == EShLangCount ? language() : compile_option.shader_stage;
 
     if (stage == EShLangCount) {
         fprintf(stderr, "unkown stage: %s\n", uri().c_str());
-        return false;
-    }
-    resource->shader = std::make_unique<glslang::TShader>(stage);
-
-    resource->nodes_by_line.clear();
-    resource->globals.clear();
-    resource->func_defs.clear();
-    resource->userdef_types.clear();
-    resource->builtins.clear();
-
-    auto& shader = *resource->shader;
-    shader.setDebugInfo(true);
-
-    std::string preambles;
-    for (auto const& [k, v] : compile_option.macros) {
-        preambles.append("#define " + k + " " + v + "\n");
+        return nullptr;
     }
 
-    const std::string pound_extension = "#extension GL_GOOGLE_include_directive : enable\n";
-    preambles += pound_extension;
-
-    auto& shader_strings = resource_->text_;
-    const char* shader_source = shader_strings.data();
-    const int shader_lengths = (int)shader_strings.size();
-    const char* string_names = resource_->uri.data();
-    shader.setStringsWithLengthsAndNames(&shader_source, &shader_lengths, &string_names, 1);
-    shader.setPreamble(preambles.c_str());
+    auto p = std::make_unique<glslang::TShader>(stage);
+    auto& shader = *p;
     shader.setEntryPoint(compile_option.entrypoint.c_str());
 
     shader.setAutoMapBindings(compile_option.auto_bind_uniforms);
@@ -188,24 +167,56 @@ bool Doc::parse(CompileOption const& option)
     shader.setInvertY(compile_option.invert_y);
     shader.setNanMinMaxClamp(false);
 
+    auto& shader_strings = resource_->text_;
+    const char* shader_source = shader_strings.data();
+    const int shader_lengths = (int)shader_strings.size();
+    const char* string_names = resource_->uri.data();
+    shader.setStringsWithLengthsAndNames(&shader_source, &shader_lengths, &string_names, 1);
+
+    return std::move(p);
+}
+
+bool Doc::parse()
+{
+    if (!resource_)
+        return false;
+
+    auto* resource = new Doc::__Resource;
+    resource->shader = create_shader();
+
+    resource->nodes_by_line.clear();
+    resource->globals.clear();
+    resource->func_defs.clear();
+    resource->userdef_types.clear();
+    resource->builtins.clear();
+
+    auto& shader = *resource->shader;
+
+    std::string preambles;
+    for (auto const& [k, v] : option_.macros) {
+        preambles.append("#define " + k + " " + v + "\n");
+    }
+
+    const std::string pound_extension = "#extension GL_GOOGLE_include_directive : enable\n";
+    preambles += pound_extension;
+
+    shader.setPreamble(preambles.c_str());
+    shader.setDebugInfo(true);
+
     BuiltinSymbolTable builtin_symbol_table;
     shader.setBuiltinSymbolTable(&builtin_symbol_table);
 
     DirStackFileIncluder includer;
-    for (auto& d : option.include_dirs) {
+    for (auto& d : option_.include_dirs) {
         includer.pushExternalLocalDirectory(d);
     }
 
     const EShMessages rules = static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules);
-
-    auto default_version_ = compile_option.version;
-    auto default_profile_ = compile_option.profile;
+    auto default_version_ = option_.version;
+    auto default_profile_ = option_.profile;
     auto force_version_profile_ = false;
 
     bool success = false;
-
-    std::map<std::string, std::map<int, int>> pp_cond_res;
-    shader.setPpCondRes(&pp_cond_res);
 
     std::string preprocessed_text;
     success = shader.preprocess(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_,
@@ -215,12 +226,6 @@ bool Doc::parse(CompileOption const& option)
         resource_->info_log = shader.getInfoLog();
         delete resource;
         return false;
-    }
-
-    for (auto const& [filename, cond_res] : pp_cond_res) {
-        for (auto const& [line, res] : cond_res) {
-            fprintf(stderr, "%s:%d cond result: %d\n", filename.c_str(), line, res);
-        }
     }
 
     success = shader.parse(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_, false,
@@ -275,9 +280,7 @@ bool Doc::parse(CompileOption const& option)
 
     release_();
     resource_ = resource;
-    // tokenize_(compile_option);
-    compute_inactive_blocks_(pp_cond_res);
-
+	compute_inactive_blocks_();
     return true;
 }
 
@@ -342,14 +345,45 @@ static Doc::LookupResult lookup_binop(glslang::TIntermBinary* binary, const int 
     return {Doc::LookupResult::Kind::ERROR};
 }
 
-void Doc::compute_inactive_blocks_(std::map<std::string, std::map<int, int>>& cond_res)
+void Doc::compute_inactive_blocks_()
 {
-    auto& file_cond_res = cond_res[uri()];
+
+    auto p = create_shader();
+    auto& shader = *p;
+    std::map<std::string, std::map<int, int>> pp_cond_res;
+    shader.setPpCondRes(&pp_cond_res);
+
+    std::string preambles;
+    for (auto const& [k, v] : option_.macros) {
+        preambles.append("#define " + k + " " + v + "\n");
+    }
+
+    const std::string pound_extension = "#extension GL_GOOGLE_include_directive : enable\n";
+    preambles += pound_extension;
+
+    shader.setPreamble(preambles.c_str());
+    shader.setDebugInfo(true);
+
+    const EShMessages rules = static_cast<EShMessages>(EShMsgCascadingErrors | EShMsgSpvRules | EShMsgVulkanRules);
+    auto default_version_ = option_.version;
+    auto default_profile_ = option_.profile;
+    auto force_version_profile_ = false;
+
+    DirStackFileIncluder includer;
+    for (auto& d : option_.include_dirs) {
+        includer.pushExternalLocalDirectory(d);
+    }
+
+    std::string preprocessed_text;
+    bool success = shader.preprocess(&kDefaultTBuiltInResource, default_version_, default_profile_,
+                                     force_version_profile_, false, rules, &preprocessed_text, includer);
+
+    if (!success)
+        return;
+
+    auto& file_cond_res = pp_cond_res[uri()];
     ComputeInactiveHelper helper(resource_->lines_, file_cond_res);
     resource_->inactive_blocks_ = helper.inactive();
-    for (auto const& block : resource_->inactive_blocks_) {
-        fprintf(stderr, "block at: [%d, %d]\n", block.start, block.end);
-    }
 }
 
 Doc::LookupResult Doc::lookup_node_in_struct(const int line, const int col)
@@ -525,7 +559,7 @@ std::vector<glslang::TIntermSymbol*> Doc::lookup_symbols_by_prefix(Doc::Function
     std::vector<glslang::TIntermSymbol*> symbols;
     auto match_fn = [&prefix, &symbols](auto vars) {
         for (auto& sym : vars) {
-            auto name = sym->getName();
+            std::string name = sym->getName().c_str();
             if (name.size() < prefix.size()) {
                 continue;
             }

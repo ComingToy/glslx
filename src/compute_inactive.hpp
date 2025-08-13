@@ -20,27 +20,34 @@ public:
             int endif_ = -1;
         } lines;
 
-        BlockAST* then = nullptr;
-        std::vector<BlockAST*> elif;
-        BlockAST* el = nullptr;
+        std::vector<BlockAST*> then;
+        std::vector<std::vector<BlockAST*>> elif;
+        std::vector<BlockAST*> el;
 
         BlockAST() = default;
 
-        BlockAST(BlockAST* then, std::vector<BlockAST*> elif, BlockAST* else_) : then(then), elif (elif), el(else_){};
+        BlockAST(std::vector<BlockAST*> then, std::vector<std::vector<BlockAST*>> elif, std::vector<BlockAST*> else_)
+            : then(then), elif (elif), el(else_){};
         void release()
         {
-            if (then)
-                then->release();
-            delete then;
-
-            if (el)
-                el->release();
-            delete el;
-
-            for (auto const& p : elif) {
-                if (p)
-                    p->release();
+            for (auto p : then) {
+                p->release();
                 delete p;
+            }
+
+            for (auto& v : elif) {
+                for (auto p : v) {
+                    p->release();
+                    delete p;
+                }
+            }
+
+            for (auto& v : elif) {
+                for (auto* p : v) {
+                    if (p)
+                        p->release();
+                    delete p;
+                }
             }
         }
         ~BlockAST() { release(); }

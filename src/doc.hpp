@@ -16,21 +16,20 @@ class Doc {
 public:
     using FunctionDefDesc = DocInfoExtractor::FunctionDefDesc;
     Doc();
-    Doc(std::string const& uri, const int version, std::string const& text);
+    Doc(std::string const& uri, const int version, std::string const& text, CompileOption const& option = {});
     Doc(const Doc& rhs);
     Doc(Doc&& rhs);
     Doc& operator=(const Doc& doc);
     Doc& operator=(Doc&& doc);
     virtual ~Doc();
 
-    bool parse(CompileOption const& compile_option);
+    bool parse();
     void update(const int version, std::string const& text)
     {
         if (resource_->version >= version)
             return;
         resource_->version = version;
         set_text(text);
-        // tokenize_();
     }
 
     int version() const { return resource_->version; }
@@ -89,7 +88,6 @@ private:
         std::string text_;
         std::vector<std::string> lines_;
         EShLanguage language;
-
         std::unique_ptr<glslang::TShader> shader;
 
         std::map<int, std::vector<TIntermNode*>> nodes_by_line;
@@ -103,12 +101,15 @@ private:
         int ref = 1;
     };
 
+    CompileOption option_;
+
     __Resource* resource_;
     void infer_language_();
     void tokenize_(CompileOption const& option);
     void release_();
 
     LookupResult lookup_node_in_struct(const int line, const int col);
-    void compute_inactive_blocks_(std::map<std::string, std::map<int, int>>& cond_res);
+    void compute_inactive_blocks_();
+    std::unique_ptr<glslang::TShader> create_shader();
 };
 #endif

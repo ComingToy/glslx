@@ -21,10 +21,10 @@ nlohmann::json semantic_token(Doc* doc)
     std::vector<Token> tokens;
     nlohmann::json result;
 
-    if (!doc) {
+    if (!doc || doc->inactive_blocks().empty()) {
         return result;
     }
-
+#if 0
     for (auto* sym : doc->globals()) {
         const auto& name = sym->getName();
         auto loc = sym->getLoc();
@@ -57,7 +57,7 @@ nlohmann::json semantic_token(Doc* doc)
             tokens.push_back({loc.line - 1, loc.column - 1, (int)name.size(), 3, 0});
         }
     }
-
+#endif
     auto const& lines = doc->lines();
     for (auto const& block : doc->inactive_blocks()) {
         for (int i = block.start; i <= block.end; ++i) {

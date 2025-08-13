@@ -94,7 +94,7 @@ std::tuple<bool, Doc*> Workspace::save_doc(std::string const& uri, const int ver
     if (docs_.count(uri) > 0) {
         auto& doc = docs_[uri];
         if (doc.version() == version) {
-            bool ret = doc.parse(get_compile_option(uri));
+            bool ret = doc.parse();
             return std::make_tuple(ret, &doc);
         }
         return std::make_tuple(true, &doc);
