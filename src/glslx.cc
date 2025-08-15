@@ -52,10 +52,10 @@ static void handle_message(std::string const& body)
 
 int main(int argc, char* argv[])
 {
-    auto* fp = fopen("/home/conley/.local/log/glslx/error.log", "w+");
-    if (fp) {
-        stderr = fp;
-    }
+    // auto* fp = fopen("/home/conley/.local/log/glslx/error.log", "w+");
+    // if (fp) {
+    //     stderr = fp;
+    // }
     std::string body;
     while (read_message(body) == 0) {
         handle_message(body);

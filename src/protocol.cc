@@ -16,8 +16,8 @@
 int Protocol::handle(nlohmann::json& req)
 {
     nlohmann::json resp;
-    fprintf(stderr, "start handle protocol req: \n%s\n", req.dump(4).c_str());
-    fflush(stderr);
+    // fprintf(stderr, "start handle protocol req: \n%s\n", req.dump(4).c_str());
+    // fflush(stderr);
 
     std::string method = req["method"];
     if (method != "initialize" && !init_) {
@@ -401,7 +401,7 @@ void Protocol::send_to_client_(nlohmann::json& content)
     header.append("Content-Type: application/vscode-jsonrpc;charset=utf-8\r\n");
     header.append("\r\n");
     header.append(body_str);
-    fprintf(stderr, "resp to client: \n%s\n", header.c_str());
+    // fprintf(stderr, "resp to client: \n%s\n", header.c_str());
     std::cout << header;
     std::flush(std::cout);
 }
