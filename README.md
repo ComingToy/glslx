@@ -22,6 +22,8 @@ glslx is a GLSL language server based on the official [Khronos Group glslang](ht
   - Syntax and semantic checking via glslang  
 - **Header File Support**  
   - Full handling of `#include` directives  
+- **Conditional Compilation Support**
+  - Marking inactive branches based on conditional compilation results
 
 ### 🚧 Planned Features  
 - Semantic Tokens  
@@ -90,6 +92,7 @@ glslx is a GLSL language server based on the official [Khronos Group glslang](ht
 | Function Completion | ![Function Completion](doc/completion_func.gif) |  
 | Struct Member Completion | ![Struct Member Completion](doc/completion_field.gif) |  
 | Goto Definition | ![Goto Definition](doc/definition.gif) |  
+| Conditional Compilation Support | ![Conditional Compilation Support](doc/inactive_branch.png)
 
 ## 📜 License  
 

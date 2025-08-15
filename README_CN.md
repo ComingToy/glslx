@@ -22,6 +22,8 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
   - 基于glslang的语法和语义检查
 - **头文件支持**
   - 完整处理`#include`指令
+- **条件编译支持**
+  - 根据条件编译结果标记inactive分支
 
 ### 🚧 规划中的特性
 - 语义标记 (Semantic Tokens)
@@ -90,6 +92,7 @@ glslx 是一个基于 [Khronos Group glslang](https://github.com/KhronosGroup/gl
 | 函数补全 | ![补全函数](doc/completion_func.gif) |
 | 结构体成员补全 | ![补全结构体成员](doc/completion_field.gif) |
 | 跳转到定义 | ![Goto Definition](doc/definition.gif) |  
+| 条件编译支持 | ![](doc/inactive_branch.png)
 
 ## 📜 许可证
 
