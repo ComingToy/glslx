@@ -1,11 +1,13 @@
 #include "protocol.hpp"
 #include "completion.hpp"
 #include "document_symbol.hpp"
+#include "semantic_token.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <iostream>
 #include <iterator>
+#include <ostream>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -14,11 +16,12 @@
 int Protocol::handle(nlohmann::json& req)
 {
     nlohmann::json resp;
-    std::cerr << "start handle protocol req: \n" << req.dump(4) << std::endl;
+    // fprintf(stderr, "start handle protocol req: \n%s\n", req.dump(4).c_str());
+    // fflush(stderr);
 
     std::string method = req["method"];
     if (method != "initialize" && !init_) {
-        std::cerr << "received request but server is uninitialized." << std::endl;
+        fprintf(stderr, "received request buf server is uninitialized. \n");
         return 0;
     }
 
@@ -40,6 +43,8 @@ int Protocol::handle(nlohmann::json& req)
         did_save_(req);
     } else if (method == "textDocument/documentSymbol") {
         document_symbol_(req);
+    } else if (method == "textDocument/semanticTokens/full") {
+        semantic_token_(req);
     }
 
     return 0;
@@ -119,7 +124,13 @@ void Protocol::initialize_(nlohmann::json& req)
 			"selectionRangeProvider": false,
 			"linkedEditingRangeProvider": false,
 			"callHierarchyProvider": false,
-			"semanticTokensProvider": false,
+			"semanticTokensProvider": {
+				"legend": {
+					"tokenTypes": ["type", "struct", "parameter", "variable", "function", "keyword", "macro", "modifier", "number", "operator", "comment"],
+					"tokenModifiers": ["declaration", "definition", "readonly", "static"]
+				},
+				"full": true
+			},
 			"monikerProvider": false,
 			"typeHierarchyProvider": false,
 			"inlineValueProvider": false,
@@ -129,12 +140,10 @@ void Protocol::initialize_(nlohmann::json& req)
 	}
 	)");
 
-    // std::cerr << "build reqsp capabilities: " << std::endl << result.dump() << std::endl;
     nlohmann::json params = req["params"];
     workspace_.init(params["rootPath"]);
 
     init_ = true;
-    // std::cerr << "init workspace at root: " << workspace_.get_root() << std::endl;
     make_response_(req, &result);
 }
 
@@ -150,9 +159,9 @@ void Protocol::did_open_(nlohmann::json& req)
     std::string uri = textDoc["uri"];
     int version = textDoc["version"];
     std::string source = textDoc["text"];
-    Doc doc(uri, version, source);
+    Doc doc(uri, version, source, workspace_.get_compile_option(uri));
     const auto& compile_option = workspace_.get_compile_option(uri);
-    if (!doc.parse(compile_option)) {
+    if (!doc.parse()) {
         publish_diagnostics(doc.info_log());
     } else {
         publish_clear_diagnostics(uri);
@@ -263,14 +272,14 @@ void Protocol::definition_(nlohmann::json& req)
         fprintf(stderr, "server is uninitialized\n");
         return;
     }
-    std::cerr << "handle goto definition" << std::endl;
+    // fprintf(stderr, "handle goto definition\n");
 
     auto& params = req["params"];
     std::string uri = params["textDocument"]["uri"];
     int col = params["position"]["character"];
     int line = params["position"]["line"];
 
-    std::cerr << "target sym at " << line << ":" << col << std::endl;
+    // fprintf(stderr, "target sym at %d:%d\n", line, col);
     auto loc = workspace_.locate_symbol_def(uri, line + 1, col + 1);
 
     if (loc.name) {
@@ -311,6 +320,22 @@ void Protocol::document_symbol_(nlohmann::json& req)
     }
 
     make_response_(req, &arr);
+}
+
+void Protocol::semantic_token_(nlohmann::json& req)
+{
+    auto& params = req["params"];
+    std::string uri = params["textDocument"]["uri"];
+    auto* doc = workspace_.get_doc(uri);
+    if (!doc) {
+        make_response_(req, nullptr);
+    }
+
+    auto tokens = semantic_token(doc);
+    nlohmann::json result;
+    result["data"] = tokens;
+
+    make_response_(req, &result);
 }
 
 void Protocol::publish_(std::string const& method, nlohmann::json* params)
@@ -376,7 +401,7 @@ void Protocol::send_to_client_(nlohmann::json& content)
     header.append("Content-Type: application/vscode-jsonrpc;charset=utf-8\r\n");
     header.append("\r\n");
     header.append(body_str);
-    std::cerr << "resp to client: \n" << header << std::endl;
+    // fprintf(stderr, "resp to client: \n%s\n", header.c_str());
     std::cout << header;
     std::flush(std::cout);
 }

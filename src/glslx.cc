@@ -1,7 +1,7 @@
+#include "protocol.hpp"
 #include <cstdio>
 #include <iostream>
 #include <vector>
-#include "protocol.hpp"
 
 int read_message(std::string& body)
 {
@@ -16,9 +16,8 @@ int read_message(std::string& body)
 
     auto start_pos = line.find("Content-Length: ");
 
-	// std::cerr << "recv header: \n" << line << std::endl;
     if (start_pos == std::string::npos) {
-        std::cerr << "format error: " << line << std::endl;
+        fprintf(stderr, "format error: %s\n", line.c_str());
         return -1;
     }
 
@@ -28,8 +27,6 @@ int read_message(std::string& body)
     auto length_offset = content_length.find(": ");
     std::string num(content_length.begin() + length_offset + 2, content_length.end());
     auto len = ::atoi(num.c_str());
-
-	// std::cerr << "recv Content Length: " << content_length << std::endl << " str num: " << num << "\n int num: " << len << std::endl;
 
     std::vector<char> buf(len);
     auto* p = buf.data();
@@ -43,24 +40,26 @@ int read_message(std::string& body)
     }
 
     body = std::string(buf.begin(), buf.end());
-	// std::cerr << "recv body: \n" << body << std::endl;
     return 0;
 }
 
 static void handle_message(std::string const& body)
 {
-	static Protocol protocol;
-	// std::cerr << "start handle message: " << std::endl << body << std::endl;
-	auto json = nlohmann::json::parse(body);
-	protocol.handle(json);
+    static Protocol protocol;
+    auto json = nlohmann::json::parse(body);
+    protocol.handle(json);
 }
 
 int main(int argc, char* argv[])
 {
+    // auto* fp = fopen("/home/conley/.local/log/glslx/error.log", "w+");
+    // if (fp) {
+    //     stderr = fp;
+    // }
     std::string body;
     while (read_message(body) == 0) {
-		handle_message(body);
-		body.clear();
+        handle_message(body);
+        body.clear();
     };
 
     return 0;

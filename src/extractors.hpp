@@ -1,6 +1,7 @@
 #ifndef __GLSLX_EXTRACTORS_HPP__
 #define __GLSLX_EXTRACTORS_HPP__
 #include "glslang/Include/intermediate.h"
+#include <cstdio>
 #include <iostream>
 
 struct LocalDefUseExtractor : public glslang::TIntermTraverser {
@@ -133,6 +134,7 @@ public:
 class DocInfoExtractor : public glslang::TIntermTraverser {
 public:
     struct FunctionDefDesc {
+        std::string name;
         glslang::TIntermAggregate* def;
         std::vector<glslang::TIntermSymbol*> args;
         std::vector<glslang::TIntermSymbol*> local_defs;
@@ -170,20 +172,30 @@ public:
             return false;
         }
 
+        auto norm_func_name = [](std::string const& fname) {
+            auto pos = fname.find("(");
+            if (pos == std::string::npos) {
+                return fname;
+            }
+
+            return std::string(fname.begin(), fname.begin() + pos);
+        };
+
         if (agg->getOp() == glslang::EOpFunction) {
 
-            struct FunctionDefDesc function_def = {agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
+            struct FunctionDefDesc function_def = {
+                norm_func_name(agg->getName().c_str()), agg, {}, {}, {}, {}, agg->getLoc(), agg->getEndLoc()};
 
             auto& children = agg->getSequence();
             if (children.size() != 2) {
-                std::cerr << "found func " << agg->getName() << " but children size != 2" << std::endl;
+                fprintf(stderr, "found func %s but children size != 2\n", agg->getName().c_str());
                 return true;
             }
 
             std::vector<glslang::TIntermSymbol*> args;
             auto* params = children[0]->getAsAggregate();
             if (!params || params->getOp() != glslang::EOpParameters) {
-                std::cerr << "found func " << agg->getName() << " but children[0].op != EOpParameters" << std::endl;
+                fprintf(stderr, "found func %s but children[0].op != EOpParameters\n", agg->getName().c_str());
                 return true;
             }
 
@@ -199,11 +211,10 @@ public:
             function_def.local_uses.swap(extractor.uses);
             function_def.userdef_types.swap(extractor.userdef_types);
 
-            std::cerr << "found function def " << agg->getName() << " at " << agg->getLoc().getFilename() << ":"
-                      << agg->getLoc().line << ":" << agg->getLoc().column << " to "
-                      << body->getAsAggregate()->getEndLoc().line
-                      << " return type: " << agg->getType().getCompleteString() << " has " << agg->getSequence().size()
-                      << " sub nodes" << std::endl;
+            fprintf(stderr, "found func def %s at %s:%d:%d to %d return type: %s has %zu sub nodes\n",
+                    agg->getName().c_str(), agg->getLoc().getFilename(), agg->getLoc().line, agg->getLoc().column,
+                    body->getAsAggregate()->getEndLoc().line, agg->getType().getCompleteString().c_str(),
+                    agg->getSequence().size());
 
             function_def.end = body->getAsAggregate()->getEndLoc();
             funcs.emplace_back(std::move(function_def));

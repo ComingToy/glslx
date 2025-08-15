@@ -1,6 +1,7 @@
 #ifndef __GLSLX_DOC_HPP__
 #define __GLSLX_DOC_HPP__
 #include "args.hpp"
+#include "compute_inactive.hpp"
 #include "extractors.hpp"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
@@ -15,25 +16,25 @@ class Doc {
 public:
     using FunctionDefDesc = DocInfoExtractor::FunctionDefDesc;
     Doc();
-    Doc(std::string const& uri, const int version, std::string const& text);
+    Doc(std::string const& uri, const int version, std::string const& text, CompileOption const& option = {});
     Doc(const Doc& rhs);
     Doc(Doc&& rhs);
     Doc& operator=(const Doc& doc);
     Doc& operator=(Doc&& doc);
     virtual ~Doc();
 
-    bool parse(CompileOption const& compile_option);
+    bool parse();
     void update(const int version, std::string const& text)
     {
         if (resource_->version >= version)
             return;
         resource_->version = version;
         set_text(text);
-        // tokenize_();
     }
 
     int version() const { return resource_->version; }
     std::vector<std::string> const& lines() const { return resource_->lines_; }
+    auto const& inactive_blocks() const { return resource_->inactive_blocks_; }
     const char* text()
     {
         if (resource_)
@@ -73,6 +74,8 @@ public:
     glslang::TSourceLoc locate_symbol_def(Doc::FunctionDefDesc* func, glslang::TIntermSymbol* use);
     glslang::TSourceLoc locate_userdef_type(int line, const glslang::TType* use);
 
+    using Range = ComputeInactiveHelper::Range;
+
 private:
     typedef decltype(YYSTYPE::lex) lex_info_type;
     struct Token {
@@ -85,7 +88,6 @@ private:
         std::string text_;
         std::vector<std::string> lines_;
         EShLanguage language;
-
         std::unique_ptr<glslang::TShader> shader;
 
         std::map<int, std::vector<TIntermNode*>> nodes_by_line;
@@ -95,8 +97,11 @@ private:
         std::map<int, std::vector<Token>> tokens_by_line;
         std::vector<glslang::TSymbol*> builtins;
         std::string info_log;
+        std::vector<Range> inactive_blocks_;
         int ref = 1;
     };
+
+    CompileOption option_;
 
     __Resource* resource_;
     void infer_language_();
@@ -104,5 +109,7 @@ private:
     void release_();
 
     LookupResult lookup_node_in_struct(const int line, const int col);
+    void compute_inactive_blocks_();
+    std::unique_ptr<glslang::TShader> create_shader();
 };
 #endif

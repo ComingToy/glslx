@@ -2,6 +2,7 @@
 #include "args.hpp"
 #include "doc.hpp"
 #include "nlohmann/json.hpp"
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <tuple>
@@ -66,7 +67,7 @@ void Workspace::parse_compile_options(std::vector<CompileCommand> const& compile
 
         CompileOption compile_option;
         if (!::parse_compile_options(args, compile_option)) {
-            std::cerr << "parse compile options failed for " << item.file << std::endl;
+            fprintf(stderr, "parse compile options failed for %s\n", item.file.c_str());
             continue;
         }
 
@@ -93,7 +94,7 @@ std::tuple<bool, Doc*> Workspace::save_doc(std::string const& uri, const int ver
     if (docs_.count(uri) > 0) {
         auto& doc = docs_[uri];
         if (doc.version() == version) {
-            bool ret = doc.parse(get_compile_option(uri));
+            bool ret = doc.parse();
             return std::make_tuple(ret, &doc);
         }
         return std::make_tuple(true, &doc);
@@ -161,7 +162,7 @@ Workspace::lookup_symbols_by_prefix(std::string const& uri, Doc::FunctionDefDesc
 {
     auto syms = docs_[uri].lookup_symbols_by_prefix(func, prefix);
     for (auto* sym : syms) {
-        std::cerr << "find symbol: " << sym->getName() << std::endl;
+        fprintf(stderr, "find symbol: %s\n", sym->getName().c_str());
     }
     return syms;
 }

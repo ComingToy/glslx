@@ -8,6 +8,8 @@ add_library(
 	protocol.hpp
 	completion.cc
 	completion.hpp
+    semantic_token.cc
+    semantic_token.hpp
 	doc.cc
 	doc.hpp
 	workspace.cc
@@ -18,6 +20,8 @@ add_library(
 	lsp_defs.hpp
     args.cc
     args.hpp
+    compute_inactive.hpp
+    compute_inactive.cc
 )
 
 target_link_libraries(lsp PUBLIC MachineIndependent nlohmann_json::nlohmann_json)
