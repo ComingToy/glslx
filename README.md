@@ -23,7 +23,7 @@ glslx is a GLSL language server based on the official [Khronos Group glslang](ht
 - **Header File Support**  
   - Full handling of `#include` directives  
 - **Conditional Compilation Support**
-  - Marking inactive branches based on conditional compilation results
+  - Grey out code in inactive preprocessor branches
 
 ### 🚧 Planned Features  
 - Semantic Tokens  
