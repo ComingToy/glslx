@@ -138,6 +138,10 @@ std::vector<ComputeInactiveHelper::Range> ComputeInactiveHelper::inactive()
         compute_inactive(block, inactive_blocks);
     }
 
+    for (auto* p : blocks) {
+        delete p;
+    }
+
     return inactive_blocks;
 }
 
