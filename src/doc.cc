@@ -218,16 +218,6 @@ bool Doc::parse()
 
     bool success = false;
 
-    std::string preprocessed_text;
-    success = shader.preprocess(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_,
-                                false, rules, &preprocessed_text, includer);
-
-    if (!success) {
-        resource_->info_log = shader.getInfoLog();
-        delete resource;
-        return false;
-    }
-
     success = shader.parse(&kDefaultTBuiltInResource, default_version_, default_profile_, force_version_profile_, false,
                            rules, includer);
     if (!success) {
@@ -253,8 +243,8 @@ bool Doc::parse()
 
     for (auto& s : visitor.globals) {
         auto loc = s->getLoc();
-        // fprintf(stderr, "global symbol %s define at %s:%d:%d\n", s->getName().c_str(), loc.getFilename(), loc.line,
-        //         loc.column);
+        fprintf(stderr, "global symbol %s define at %s:%d:%d\n", s->getName().c_str(), loc.getFilename(), loc.line,
+                loc.column);
         resource->globals.push_back(s);
     }
 
