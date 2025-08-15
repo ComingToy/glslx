@@ -31,23 +31,24 @@ public:
         void release()
         {
             for (auto p : then) {
-                p->release();
+                if (p)
+                    p->release();
                 delete p;
             }
 
             for (auto& v : elif) {
                 for (auto p : v) {
-                    p->release();
-                    delete p;
-                }
-            }
-
-            for (auto& v : elif) {
-                for (auto* p : v) {
                     if (p)
                         p->release();
                     delete p;
                 }
+            }
+
+            for (auto& p : el) {
+                if (p) {
+                    p->release();
+                }
+                delete p;
             }
         }
         ~BlockAST() { release(); }
